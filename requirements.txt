@@ -1,0 +1,11 @@
+# COMP5523 shoes retrieval — 依赖（macOS / Windows 通用）
+# 推荐 Python 3.11 或 3.12（3.13 部分依赖可能没有预编译轮子）
+# 装好并跑通后，锁版本：  pip freeze > requirements.lock.txt
+
+torch>=2.2
+open-clip-torch>=2.24
+Pillow>=10.0
+numpy>=1.26
+pandas>=2.0
+gradio>=4.40
+kaggle>=1.6

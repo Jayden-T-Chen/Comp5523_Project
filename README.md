@@ -1,0 +1,110 @@
+# COMP5523 · 鞋子文本检索（Domain-Specific Text-to-Image Retrieval）
+
+课程项目代码仓库。做的是**一个检索系统 + 自建评测 + 消融实验**，不是"微调一个模型"：
+骨架是冻结的 CLIP ViT-B/32，我们在它上面叠轻量的领域适配（prompt 模板、查询解析、属性校验重排），
+用 mAP / P@10 这类指标量化"每一层适配加了多少分"。完整方案见 [`docs/plan.md`](docs/plan.md)。
+
+当前进度：baseline（冻结 CLIP + 图库嵌入缓存 + CLI/Gradio demo）已可跑；评测与重排待做。
+
+---
+
+## 1. 克隆后 5 步跑起来
+
+```bash
+git clone <这个仓库的地址> comp5523project
+cd comp5523project
+
+# 1) 虚拟环境（Python 3.11/3.12）
+python3.12 -m venv .venv && source .venv/bin/activate      # Windows: py -3.12 -m venv .venv && .venv\Scripts\Activate.ps1
+python -m pip install -U pip -r requirements.txt
+
+# 2) Kaggle 凭据（只需一次）
+mkdir -p ~/.kaggle && echo 'KGAT_你的token' > ~/.kaggle/access_token && chmod 600 ~/.kaggle/access_token
+#   Windows: 把 access_token 放到 C:\Users\<你>\.kaggle\access_token
+#   也可以临时用环境变量 KAGGLE_API_TOKEN=KGAT_...
+
+# 3) 取数据：自动下载 Kaggle 数据集 → 按 manifest 复制出那 1000 张 → 写 metadata.csv
+python scripts/download_footwear.py
+
+# 4) CLI 验证检索（首次会嵌入 1000 张并存缓存，M1 约 1~3 分钟）
+python demo_clip_rank.py --query "black leather shoes" --top 8
+
+# 5) 网页 demo（本机浏览器打开 http://127.0.0.1:7860）
+python demo_ui.py
+```
+
+---
+
+## 2. 文件说明
+
+| 文件 / 目录 | 作用 | 怎么用 |
+| --- | --- | --- |
+| `clip_core.py` | 全项目共用的检索内核：读 `data/metadata.csv`、选设备（mps/cuda/cpu）、加载 CLIP ViT-B/32（`openai` 权重）、批量编码图片并缓存到 `data/image_features.pt`、文本编码与 top-k 排序 | 被其它脚本 import，不直接运行 |
+| `demo_clip_rank.py` | 命令行版检索，用来验证数据与模型是否正常、看分数 | `python demo_clip_rank.py --query "black leather shoes" --top 8`（`--query` 可重复） |
+| `demo_ui.py` | Gradio Blocks 网页：输入框 + Top-K 滑条 + 图片墙 + 排行文本 | `python demo_ui.py`，默认 `127.0.0.1:7860` |
+| `scripts/download_footwear.py` | 数据脚本：下载/解压 Kaggle 数据集、按 `data/manifest.csv` 复制图片、生成 `data/metadata.csv`；`--resample` 才重新抽样 | `python scripts/download_footwear.py`（复现）/ `--resample`（重建划分，仅维护者） |
+| `data/manifest.csv` | **唯一提交进 git 的数据文件**：1000 条样本的 id 与属性，锁定"到底是哪 1000 张" | 由脚本读取；不要手工改 |
+| `data/`（其余） | `raw/`（原始数据集）、`gallery/`（抽出的 1000 张）、`metadata.csv`（含图片路径）、`image_features.pt`（嵌入缓存） | 全部由脚本生成，已在 `.gitignore` |
+| `requirements.txt` | 运行依赖（torch / open-clip-torch / gradio / kaggle …） | `pip install -r requirements.txt`；装好后建议 `pip freeze > requirements.lock.txt` 锁版本 |
+| `docs/plan.md` | 项目方案：数据集、属性 schema、指标与消融、代码架构、10 天排期 | 写报告/分工时对着看 |
+| `.gitignore` | 排除 `data/`（除 manifest）、虚拟环境、嵌入缓存、Kaggle token | — |
+
+---
+
+## 3. 数据：只传脚本 + manifest，不传图片
+
+**要传 `scripts/download_footwear.py` 吗？** 要。它是纯代码、不含任何密钥，别人 `git pull` 后一条命令就能拿到数据。
+1000 张图（17MB）和 `data/raw`（632MB）都不进仓库——体积大、且完全可由脚本重建。
+
+**能保证每次下的都是同一批 1000 张吗？** 能，靠三层保险：
+
+1. **数据集是固定快照**：Kaggle `paramaggarwal/fashion-product-images-small` 的 id `NNNNN.jpg` 与 `styles.csv` 内容稳定，同一个 id 永远对应同一张图。
+2. **id 清单提交在仓库里**：`data/manifest.csv` 存的就是这 1000 个 id（及属性）。脚本默认走**复现模式**——不重新抽样，只按 manifest 复制图片。所以抽样的随机性完全被绕开了（`--seed 42` 只是重建划分时才用到）。
+3. **逐条校验**：复制时拿 manifest 的属性跟 `styles.csv` 对一遍，并且校验 1000 张 id 是否都找到。任何不一致会打印 WARNING/ERROR 并以非 0 退出，而不是悄悄给你另一批图。
+
+已实测：连续两次运行，`data/gallery` 的文件名集合 md5 完全一致（`c809ca70…`）；用 `--seed 42` 重新抽样，生成的 manifest 与原文件逐字节相同。
+
+> 唯一的残余风险是 Kaggle 上游把数据集**重新上传**了。这时第 3 层会报错，请停下来对比，而不是继续跑——重新生成划分只会让大家的评测结果不可比。
+
+常用命令：
+
+```bash
+python scripts/download_footwear.py                                  # 复现既定 1000 张（默认，日常用这个）
+python scripts/download_footwear.py --resample --target 1000 --seed 42  # 维护者重建划分，会覆盖 manifest.csv
+python scripts/download_footwear.py --force                          # 强制重新下载（一般不需要）
+```
+
+抽样策略（`--resample` 时生效）：只取 `masterCategory == Footwear`（9222 行）→ **Men/Women 各 500** →
+在每个性别内按 `baseColour` 轮转，主色各约 50 张，稀有颜色也能分到几张。类别看 `articleType`（8 类）而不是 `category`（只有 3 类）。
+注意 Kaggle **small 版图是 60×80 缩略图**：检索和演示够用，投屏放大偏糊。
+
+`data/raw`（632MB）在 `gallery` 生成后可以删掉省空间；但删了就没法重跑 `--resample` 或做上面的校验，要重新下载。
+
+---
+
+## 4. 跨平台注意（macOS / Windows 本地，无需虚拟机）
+
+- 设备统一由 `clip_core.get_device()` 决定：M1 → `mps`，N 卡 → `cuda`，否则 `cpu`。别写死 `"cpu"`。
+- **M1 个别算子报错**：`export PYTORCH_ENABLE_MPS_FALLBACK=1`。8GB Air 用 ViT-B/32 + batch 32 足够，别上 ViT-L/14。
+- 首次跑会联网下载 CLIP 权重（几百 MB），之后走本地缓存；嵌入缓存在 `data/image_features.pt`，按 `metadata.csv` 的 mtime 失效。
+- 路径全用 `pathlib`，CSV 读写显式 `encoding="utf-8"`（Windows 默认可能是 cp1252），可执行入口都有 `if __name__ == "__main__":`。
+- Windows 上 Gradio 首次启动可能弹防火墙授权，允许本地访问即可；数据集解压路径别太深。
+- **token 不进仓库**：只放 `~/.kaggle/access_token`（`chmod 600`）或用环境变量。若曾贴到聊天/公开处，用完去 Kaggle 轮换。
+
+---
+
+## 5. 分工建议（多人协作）
+
+- **一份数据、一份 manifest、一份评测集**：只在 `main` 上改 `data/manifest.csv` 与之后的 `eval/queries.json`，其他人只 `git pull`。
+- 只有一台机器负责 `--resample`（重建划分）和生成评测集；其他人跑复现模式，保证大家算 mAP 用的是同一批图和同一批 query。
+- 录 demo 的人只跑最后两步（`download_footwear.py` → `demo_ui.py`），不需要 GPU。
+- 嵌入缓存不要提交（不同机器/设备算出的向量可能有极小数值差异），各自本地生成。
+
+---
+
+## 6. 待做（按方案 B 的顺序）
+
+1. `eval/queries.json` + `eval/eval.py`：每条 query 标注相关 id，算 mAP / P@10，输出 baseline 分数。
+2. `retrieval/rerank.py`：查询解析（类别/颜色/性别）+ 模板集成 + 属性校验重排。
+3. 消融：Baseline（裸 CLIP）→ +Prompt → +解析与重排，同一份评测集对比，出表和图。
+4. 报告里的失败案例分析（颜色混淆、类别混淆、缩略图模糊导致的误排）。
