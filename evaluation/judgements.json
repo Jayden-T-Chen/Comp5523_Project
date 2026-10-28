@@ -1,30 +1,267 @@
 {
-  "note": "By-eye relevance over the top-10 pool returned by the baseline. 1 = the image clearly matches the query's main attribute, 0 = it does not (including ambiguous cases, which are deliberately scored 0 so the number is a lower bound). Pool currently covers baseline top-10 only; extend a query's dict when a new method surfaces unseen ids.",
-  "rule": "Judge the dominant visible colour / the shoe type. Same-hue near neighbours count (charcoal->black, tan/beige->brown, navy->blue, maroon->red); a clearly different hue or a dominant colour that is not the queried one counts 0. Small accents (stripes, logos, soles) are ignored.",
+  "note": "By-eye relevance over the top-10 pool returned by the baseline. 1 = the image matches the query on every stated attribute, 0 = it does not. Pool currently covers baseline top-10 only; extend a query's dict when a new method surfaces unseen ids.",
+  "rule": "Colour: judge the dominant visible colour of the shoe. Same-hue near neighbours count (charcoal->black, tan/beige->brown, navy->blue, maroon->red, khaki<->beige<->light olive; warm metals gold/copper<->bronze; cool metals silver<->light grey). A clearly different hue counts 0 (silver shoe for bronze, dark olive for khaki). Small accents (stripes, logos, soles) are ignored. Type: judge the shoe shape, not the metadata label (sneaker vs pump vs sandal vs dress shoe). Gender: only reject when the design is clearly the opposite gender (e.g. a pink thong for 'flip flops for men'); unisex designs count 1. Borderline cells are listed under `borderline` so they can be re-checked.",
   "judged": {
     "color_black": {
-      "9090": 1, "37246": 1, "11514": 1, "35161": 1, "34851": 1,
-      "19369": 1, "22135": 1, "9121": 0, "22122": 1, "6468": 1
+      "9090": 1,
+      "37246": 1,
+      "11514": 1,
+      "35161": 1,
+      "34851": 1,
+      "19369": 1,
+      "22135": 1,
+      "9121": 0,
+      "22122": 1,
+      "6468": 1
     },
     "color_white": {
-      "3215": 1, "31216": 1, "1546": 1, "3654": 1, "39990": 1,
-      "34076": 1, "49353": 1, "47680": 0, "34855": 0, "3254": 1
+      "3215": 1,
+      "31216": 1,
+      "1546": 1,
+      "3654": 1,
+      "39990": 1,
+      "34076": 1,
+      "49353": 1,
+      "47680": 0,
+      "34855": 0,
+      "3254": 1
     },
     "color_red": {
-      "4743": 1, "17692": 1, "6374": 1, "6637": 1, "8970": 1,
-      "4483": 1, "15494": 1, "9220": 1, "6811": 1, "20895": 0
+      "4743": 1,
+      "17692": 1,
+      "6374": 1,
+      "6637": 1,
+      "8970": 1,
+      "4483": 1,
+      "15494": 1,
+      "9220": 1,
+      "6811": 1,
+      "20895": 0
     },
     "color_blue": {
-      "17675": 1, "13982": 0, "10095": 1, "34838": 1, "9382": 0,
-      "17682": 1, "5912": 0, "53138": 1, "3183": 0, "13912": 1
+      "17675": 1,
+      "13982": 0,
+      "10095": 1,
+      "34838": 1,
+      "9382": 0,
+      "17682": 1,
+      "5912": 0,
+      "53138": 1,
+      "3183": 0,
+      "13912": 1
     },
     "color_brown": {
-      "16170": 1, "33343": 1, "16163": 1, "7230": 1, "23252": 1,
-      "11961": 1, "6469": 1, "17484": 1, "13124": 1, "11912": 1
+      "16170": 1,
+      "33343": 1,
+      "16163": 1,
+      "7230": 1,
+      "23252": 1,
+      "11961": 1,
+      "6469": 1,
+      "17484": 1,
+      "13124": 1,
+      "11912": 1
     },
     "color_silver": {
-      "20778": 1, "2618": 1, "33123": 1, "59034": 1, "4496": 1,
-      "59054": 1, "20771": 1, "17700": 0, "59035": 1, "41739": 1
+      "20778": 1,
+      "2618": 1,
+      "33123": 1,
+      "59034": 1,
+      "4496": 1,
+      "59054": 1,
+      "20771": 1,
+      "17700": 0,
+      "59035": 1,
+      "41739": 1
+    },
+    "type_casual_shoes": {
+      "17700": 1,
+      "3183": 0,
+      "44780": 1,
+      "6468": 1,
+      "31216": 1,
+      "3654": 1,
+      "34855": 1,
+      "32742": 1,
+      "4276": 1,
+      "17484": 1
+    },
+    "type_heels": {
+      "59033": 1,
+      "59045": 1,
+      "41712": 1,
+      "20778": 1,
+      "33123": 1,
+      "33118": 1,
+      "59035": 1,
+      "11514": 1,
+      "15491": 1,
+      "17012": 0
+    },
+    "type_sandals": {
+      "14470": 1,
+      "35806": 1,
+      "39869": 1,
+      "50765": 1,
+      "13641": 1,
+      "45577": 1,
+      "6408": 1,
+      "47604": 1,
+      "39286": 1,
+      "45822": 1
+    },
+    "type_formal_shoes": {
+      "16170": 1,
+      "16163": 1,
+      "33343": 1,
+      "22122": 1,
+      "9090": 0,
+      "23252": 1,
+      "11892": 1,
+      "57531": 1,
+      "11901": 1,
+      "23245": 1
+    },
+    "type_flip_flops_men": {
+      "18907": 1,
+      "53446": 1,
+      "25498": 1,
+      "17836": 0,
+      "20946": 1,
+      "6655": 1,
+      "24768": 1,
+      "5622": 1,
+      "35405": 0,
+      "20952": 1
+    },
+    "type_sports_shoes_women": {
+      "15289": 1,
+      "26624": 1,
+      "22113": 1,
+      "43356": 1,
+      "44755": 1,
+      "6640": 1,
+      "38673": 1,
+      "3223": 1,
+      "34840": 1,
+      "10125": 1
+    },
+    "combo_white_sports_shoes": {
+      "3215": 1,
+      "22113": 1,
+      "3654": 1,
+      "4490": 1,
+      "24629": 1,
+      "11974": 1,
+      "6409": 1,
+      "31216": 1,
+      "1546": 1,
+      "43346": 1
+    },
+    "combo_silver_sports_shoes": {
+      "4496": 1,
+      "10088": 1,
+      "5731": 1,
+      "18675": 1,
+      "4490": 1,
+      "43346": 1,
+      "3654": 0,
+      "13676": 1,
+      "41841": 1,
+      "10078": 1
+    },
+    "combo_khaki_casual_shoes": {
+      "46115": 0,
+      "35655": 1,
+      "26531": 1,
+      "39985": 0,
+      "45865": 0,
+      "6469": 1,
+      "11842": 1,
+      "22180": 1,
+      "31985": 1,
+      "22846": 1
+    },
+    "combo_olive_casual_shoes": {
+      "4131": 1,
+      "46115": 1,
+      "44403": 1,
+      "39985": 1,
+      "25471": 1,
+      "22877": 1,
+      "31985": 1,
+      "59177": 1,
+      "45865": 1,
+      "26531": 1
+    },
+    "combo_beige_casual_shoes": {
+      "11842": 1,
+      "35655": 1,
+      "7237": 0,
+      "22868": 1,
+      "43474": 0,
+      "49353": 1,
+      "26532": 1,
+      "12519": 1,
+      "4275": 1,
+      "20890": 1
+    },
+    "combo_grey_sports_shoes": {
+      "13676": 1,
+      "5731": 1,
+      "7601": 1,
+      "46799": 1,
+      "11929": 1,
+      "10082": 1,
+      "6640": 1,
+      "18675": 1,
+      "17700": 0,
+      "4496": 1
+    },
+    "combo_bronze_heels": {
+      "33118": 1,
+      "56945": 1,
+      "17012": 1,
+      "39588": 0,
+      "33123": 0,
+      "14359": 1,
+      "41703": 0,
+      "46601": 1,
+      "53460": 1,
+      "21388": 1
+    },
+    "combo_red_casual_shoes": {
+      "4743": 1,
+      "8970": 1,
+      "17695": 1,
+      "6637": 1,
+      "49470": 1,
+      "5922": 1,
+      "51375": 1,
+      "6374": 1,
+      "3492": 1,
+      "17692": 1
+    }
+  },
+  "borderline": {
+    "type_heels": {
+      "20778": "silver mule, heel is low in the thumbnail"
+    },
+    "type_casual_shoes": {
+      "3654": "lifestyle sneaker, reads sporty to some"
+    },
+    "combo_white_sports_shoes": {
+      "1546": "white shoe on a grey background"
+    },
+    "combo_khaki_casual_shoes": {
+      "26531": "pale olive, could be read as khaki"
+    },
+    "combo_beige_casual_shoes": {
+      "43474": "mustard rather than beige"
+    },
+    "combo_bronze_heels": {
+      "17012": "brown-gold mule, low heel",
+      "46601": "gold, counted as warm metal"
     }
   }
 }

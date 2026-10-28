@@ -157,10 +157,18 @@ baseline（冻结 CLIP，纯余弦）实测：
 | 口径 | 范围 | mAP@50 | P@10 | R@10 |
 | --- | --- | --- | --- | --- |
 | auto | 60 条 | 0.329 | 0.538 | 0.180 |
-| auto | 其中 6 条颜色 query | — | 0.533 | — |
-| strict | 同样 6 条颜色 query | — | 0.850 | — |
+| auto | 其中 20 条 strict 子集 | 0.330 | 0.565 | 0.164 |
+| strict | 同样 20 条 | — | **0.880** | — |
 
-分组：color mAP 0.249 / type 0.394 / combo 0.349。auto 在 brown 一条上 P@10 只有 0.2，人眼判却是 1.0——因为 Tan/Beige 的鞋肉眼就是棕色，标签却不算。**这个差距是评测方法学的一部分**：auto 是下界，方法间提升仍有效；strict 报真实水平。strict 目前覆盖 6/20 条。
+strict 分组 P@10：color 0.850（6 条）/ type 0.917（6 条）/ combo 0.875（8 条）。**同一批 20 条 query，换标签口径从 0.565 跳到 0.880**——差值几乎全在 auto 的标签噪声上，而不是模型变好：
+
+| 组 | auto P@10 | strict P@10 |
+| --- | --- | --- |
+| color | 0.533 | 0.850 |
+| type | 0.717 | 0.917 |
+| combo | 0.475 | 0.875 |
+
+最典型的是 brown：auto 只有 0.2，人眼判 1.0——因为 Tan/Beige 的鞋肉眼就是棕色，标签却不算。**这也是评测方法学的一部分**：auto 是下界，方法间提升仍有效；strict 报真实水平。strict 已覆盖全部 20 条，`judgements.json` 里的 `borderline` 列了 8 张判得勉强的图，可复查。
 
 `results/` 里 `baseline_auto.json` / `baseline_strict.json` 都含 `per_query` 明细，方便挑失败案例写报告。
 
@@ -188,7 +196,7 @@ baseline（冻结 CLIP，纯余弦）实测：
 
 ## 8. 待做（按方案 B 的顺序）
 
-1. 补完 14 条 strict 精标（类型 6 条 + 组合 8 条）。
+1. ~~补完 14 条 strict 精标~~ 已完成，20/20；`borderline` 里的 8 张可复查。
 2. `retrieval/rerank.py`：查询解析（类别/颜色/性别）+ 模板集成 + 属性校验重排，注册成 `runEvaluation.py` 的新 method。
 3. 消融：baseline → +prompt → +解析与重排，同一份 queries 出表。
 4. 报告里的失败案例分析（颜色混淆、类别混淆、缩略图模糊、标签噪声）。
