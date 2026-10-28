@@ -4,9 +4,27 @@
 骨架是冻结的 CLIP ViT-B/32，我们在它上面叠轻量的领域适配（prompt 模板、查询解析、属性校验重排），
 用 mAP / P@10 这类指标量化"每一层适配加了多少分"。完整方案见 [`docs/plan.md`](docs/plan.md)。
 
-当前进度：baseline（冻结 CLIP + 图库嵌入缓存 + CLI/Gradio demo）已可跑；评测与重排待做。
+当前进度：baseline（冻结 CLIP + 图库嵌入缓存 + CLI/Gradio demo）已可跑；60 条评测集 + mAP/P@10/R@10 打分已可用；查询解析与重排待做。
 
 ---
+
+## 0. 日常启动（环境已装好，直接跑）
+
+```bash
+cd ~/Documents/project/comp5523project
+source .venv/bin/activate                                  # Windows: .venv\Scripts\Activate.ps1
+PYTORCH_ENABLE_MPS_FALLBACK=1 python demo_clip_rank.py --top 5
+python demo_ui.py          # 起服务后打开 http://127.0.0.1:7860，Ctrl+C 停止
+```
+
+看分数（不启网页）：
+
+```bash
+python eval/eval.py --method baseline            # auto 标签，60 条
+python eval/eval.py --method baseline --labels strict   # 人工精标过的 query
+```
+
+> 换机器 / 第一次跑请走下面的完整 5 步；嵌入缓存 `data/image_features.pt` 已存在时不会重算，起服务约几秒。
 
 ## 1. 克隆后 5 步跑起来
 
