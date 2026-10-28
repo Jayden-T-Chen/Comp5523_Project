@@ -1,0 +1,30 @@
+{
+  "note": "By-eye relevance over the top-10 pool returned by the baseline. 1 = the image clearly matches the query's main attribute, 0 = it does not (including ambiguous cases, which are deliberately scored 0 so the number is a lower bound). Pool currently covers baseline top-10 only; extend a query's dict when a new method surfaces unseen ids.",
+  "rule": "Judge the dominant visible colour / the shoe type. Same-hue near neighbours count (charcoal->black, tan/beige->brown, navy->blue, maroon->red); a clearly different hue or a dominant colour that is not the queried one counts 0. Small accents (stripes, logos, soles) are ignored.",
+  "judged": {
+    "color_black": {
+      "9090": 1, "37246": 1, "11514": 1, "35161": 1, "34851": 1,
+      "19369": 1, "22135": 1, "9121": 0, "22122": 1, "6468": 1
+    },
+    "color_white": {
+      "3215": 1, "31216": 1, "1546": 1, "3654": 1, "39990": 1,
+      "34076": 1, "49353": 1, "47680": 0, "34855": 0, "3254": 1
+    },
+    "color_red": {
+      "4743": 1, "17692": 1, "6374": 1, "6637": 1, "8970": 1,
+      "4483": 1, "15494": 1, "9220": 1, "6811": 1, "20895": 0
+    },
+    "color_blue": {
+      "17675": 1, "13982": 0, "10095": 1, "34838": 1, "9382": 0,
+      "17682": 1, "5912": 0, "53138": 1, "3183": 0, "13912": 1
+    },
+    "color_brown": {
+      "16170": 1, "33343": 1, "16163": 1, "7230": 1, "23252": 1,
+      "11961": 1, "6469": 1, "17484": 1, "13124": 1, "11912": 1
+    },
+    "color_silver": {
+      "20778": 1, "2618": 1, "33123": 1, "59034": 1, "4496": 1,
+      "59054": 1, "20771": 1, "17700": 0, "59035": 1, "41739": 1
+    }
+  }
+}

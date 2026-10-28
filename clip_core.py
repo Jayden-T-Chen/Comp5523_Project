@@ -93,6 +93,7 @@ def search(model, tokenizer, img_feats, rows, query, topk, device) -> list[dict]
         out.append(
             {
                 "rank": rank,
+                "id": r["id"],
                 "score": score,
                 "path": str(ROOT / r["path"]),
                 "title": r.get("display_name", ""),

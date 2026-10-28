@@ -1,0 +1,66 @@
+{
+  "method": "baseline",
+  "labels": "strict",
+  "depth": 50,
+  "topk": 10,
+  "n_queries": 6,
+  "overall": {
+    "p10": 0.85
+  },
+  "by_group": {
+    "color": {
+      "n": 6,
+      "p10": 0.85
+    }
+  },
+  "per_query": [
+    {
+      "qid": "color_black",
+      "query": "black shoes",
+      "group": "color",
+      "pool_judged": 10,
+      "hits": 9,
+      "p10": 0.9
+    },
+    {
+      "qid": "color_blue",
+      "query": "blue shoes",
+      "group": "color",
+      "pool_judged": 10,
+      "hits": 6,
+      "p10": 0.6
+    },
+    {
+      "qid": "color_brown",
+      "query": "brown shoes",
+      "group": "color",
+      "pool_judged": 10,
+      "hits": 10,
+      "p10": 1.0
+    },
+    {
+      "qid": "color_white",
+      "query": "white shoes",
+      "group": "color",
+      "pool_judged": 10,
+      "hits": 8,
+      "p10": 0.8
+    },
+    {
+      "qid": "color_red",
+      "query": "red shoes",
+      "group": "color",
+      "pool_judged": 10,
+      "hits": 9,
+      "p10": 0.9
+    },
+    {
+      "qid": "color_silver",
+      "query": "silver shoes",
+      "group": "color",
+      "pool_judged": 10,
+      "hits": 9,
+      "p10": 0.9
+    }
+  ]
+}

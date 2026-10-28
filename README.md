@@ -51,6 +51,12 @@ python demo_ui.py
 | `requirements.txt` | 运行依赖（torch / open-clip-torch / gradio / kaggle …），写的是版本区间 | `pip install -r requirements.txt` |
 | `requirements.lock.txt` | 本机实测通过的**精确版本**（torch 2.14.1 / open-clip-torch 3.3.0 / gradio 6.31.0，Python 3.12） | 想完全复现就用 `pip install -r requirements.lock.txt`；换环境后重装建议用这一份 |
 | `docs/plan.md` | 项目方案：数据集、属性 schema、指标与消融、代码架构、10 天排期 | 写报告/分工时对着看 |
+| `eval/build_queries.py` | 生成 `eval/queries.json`：60 条 query（色 20 / 类型 18 / 组合 22），按属性自动标相关集，完全确定性 | `python eval/build_queries.py` |
+| `eval/queries.json` | 评测集本体（入 git）：query 文本、属性、相关 id 列表、`strict` 标记 | 由上一行生成，一般不改 |
+| `eval/eval.py` | 打分：mAP@50 / P@10 / R@10，按 group 拆分，导出 `results/<method>_<labels>.json` | `python eval/eval.py --method baseline [--labels strict]` |
+| `eval/make_montage.py` | 把某条 query 的 top-10 渲染成带 id 的拼图，供人工判相关 | `python eval/make_montage.py --qid color_black` |
+| `eval/judgements.json` | 人工精标（入 git）：`qid -> {图片 id: 0/1}`，只判 top-10 池 | 看拼图后手填 |
+| `results/` | 各方法 × 各标签口径的评测结果（入 git，方便横向对比和历史） | 由 `eval.py` 写入 |
 | `.gitignore` | 排除 `data/`（除 manifest）、虚拟环境、嵌入缓存、Kaggle token | — |
 
 ---
@@ -106,9 +112,37 @@ python scripts/download_footwear.py --force                          # 强制重
 
 ---
 
-## 6. 待做（按方案 B 的顺序）
+## 6. 评测（已可用）
 
-1. `eval/queries.json` + `eval/eval.py`：每条 query 标注相关 id，算 mAP / P@10，输出 baseline 分数。
-2. `retrieval/rerank.py`：查询解析（类别/颜色/性别）+ 模板集成 + 属性校验重排。
-3. 消融：Baseline（裸 CLIP）→ +Prompt → +解析与重排，同一份评测集对比，出表和图。
-4. 报告里的失败案例分析（颜色混淆、类别混淆、缩略图模糊导致的误排）。
+```bash
+python eval/build_queries.py                                       # 重建 60 条 query（确定性，不覆盖人工标注）
+python eval/eval.py --method baseline                              # auto 标签：60 条全跑
+python eval/make_montage.py --qid color_black color_white          # 出拼图 → 人工判 → 写 judgements.json
+python eval/eval.py --method baseline --labels strict              # 已判过的 query 上算 P@10
+```
+
+两套标签口径，用途不同：
+
+- **auto**（`queries.json` 的 `relevant`）：按 metadata 的 `color`/`articleType`/`gender` 自动构造，60 条全覆盖、零人工、可复现。缺点是**标签本身就是商品命名里的颜色**，不是图里看起来的颜色，绝对分数会被系统性压低；它适合做**不同方法之间的相对比较**（同一套标签，谁高谁低是可信的）。
+- **strict**（`judgements.json`）：对 top-10 池逐张肉眼判相关。覆盖面小，但接近"人觉得对不对"，用来报告系统真实质量和校准 auto 标签的噪声。
+
+当前 baseline（冻结 CLIP ViT-B/32，纯余弦）实测：
+
+| 口径 | 范围 | mAP@50 | P@10 | R@10 |
+| --- | --- | --- | --- | --- |
+| auto | 60 条 | 0.329 | 0.538 | 0.180 |
+| auto | 其中 6 条颜色 query | — | 0.533 | — |
+| strict | 同样 6 条颜色 query | — | 0.850 | — |
+
+auto 在 color 组只有 0.249 mAP、brown 一条 P@10 仅 0.2，而人眼判是 1.0——因为 Tan/Beige 的鞋肉眼就是棕色，标签却写成别的词。**这条差距是评测方法学的一部分**，报告里要写清楚：auto 分数是下界，方法间的相对提升仍然有效。
+
+`strict` 目前覆盖 6/20 条（6 个颜色），其余 14 条（类型/组合）还需要看拼图逐条判。
+
+---
+
+## 7. 待做（按方案 B 的顺序）
+
+1. 补完 14 条 strict 精标（类型 6 条 + 组合 8 条）。
+2. `retrieval/rerank.py`：查询解析（类别/颜色/性别）+ 模板集成 + 属性校验重排，注册成 `eval.py` 的新 method。
+3. 消融：baseline → +prompt → +解析与重排，同一份 queries 出表。
+4. 报告里的失败案例分析（颜色混淆、类别混淆、缩略图模糊、标签噪声）。
