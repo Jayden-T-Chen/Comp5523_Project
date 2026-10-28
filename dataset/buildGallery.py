@@ -4,14 +4,14 @@ Build the local footwear gallery from Kaggle "Fashion Product Images (Small)".
 
 Two modes
 ---------
-1. reproduce (default)  -- data/manifest.csv already exists in the repo:
+1. reproduce (default)  -- dataset/manifest.csv already exists in the repo:
    download the raw dataset, then copy *exactly* the ids listed in the
    manifest into data/gallery/ and rewrite data/metadata.csv.
    Every attribute is re-checked against styles.csv, so if the upstream
    dataset ever changes you get an error instead of a silently different set.
 
 2. resample (--resample) -- draw a new balanced sample with a fixed seed and
-   overwrite data/manifest.csv. Only the person maintaining the split runs
+   overwrite dataset/manifest.csv. Only the person maintaining the split runs
    this; everyone else uses mode 1.
 
 Balancing policy: gender Men/Women ~50/50, and colour round-robin inside each
@@ -22,8 +22,8 @@ Cross-platform: macOS / Windows (pathlib, sys.executable, utf-8 I/O).
 Kaggle credentials: KAGGLE_API_TOKEN env, ~/.kaggle/access_token, or kaggle.json.
 
 Usage:
-  python scripts/download_footwear.py              # reproduce the committed split
-  python scripts/download_footwear.py --resample   # make a new split (maintainer)
+  python dataset/buildGallery.py              # reproduce the committed split
+  python dataset/buildGallery.py --resample   # make a new split (maintainer)
 """
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT / "data" / "raw"
 GALLERY_DIR = ROOT / "data" / "gallery"
 META_PATH = ROOT / "data" / "metadata.csv"
-MANIFEST_PATH = ROOT / "data" / "manifest.csv"
+MANIFEST_PATH = ROOT / "dataset" / "manifest.csv"
 DATASET_SLUG = "paramaggarwal/fashion-product-images-small"
 IMAGE_EXTS = {".jpg", ".jpeg", ".png"}
 

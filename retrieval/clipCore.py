@@ -1,4 +1,4 @@
-"""Shared CLIP retrieval core for the COMP5523 shoes skeleton.
+"""Shared CLIP retrieval core.
 
 Loads the gallery from data/metadata.csv, embeds it with CLIP ViT-B/32
 (open_clip, "openai" weights), caches features, and ranks images for a
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import torch
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 META_PATH = ROOT / "data" / "metadata.csv"
 CACHE_PATH = ROOT / "data" / "image_features.pt"
 MODEL_NAME = "ViT-B-32"

@@ -48,7 +48,7 @@
 
 ### 数据落盘与合规
 
-- 图片文件**不入 git**（`.gitignore`）；入 git 的是下载脚本 + `data/manifest.csv`（锁定这 1000 个 id）+ `queries.json`；`metadata.csv` 与图片由脚本按 manifest 生成（逐步校验，上游变了会报错）。
+- 图片文件**不入 git**（`.gitignore`）；入 git 的是下载脚本 + `dataset/manifest.csv`（锁定这 1000 个 id）+ `queries.json`；`metadata.csv` 与图片由脚本按 manifest 生成（逐步校验，上游变了会报错）。
 - 预处理：去重（按文件名/哈希）、去损坏图、按许可用数据；不包含人脸/个人信息。
 
 ---
@@ -131,33 +131,39 @@ query 文本
 ## 6. 代码架构
 
 ```
-comp5523project/                        # 仓库现状 + 待补
-├── README.md                           # 用法总入口（环境、数据、跑法、分工）
-├── requirements.txt
-├── clip_core.py                        # ✅ 检索内核：设备/模型/嵌入缓存/搜索
-├── demo_clip_rank.py                   # ✅ CLI 验证
-├── demo_ui.py                          # ✅ Gradio UI（= 报告里的 app.py）
-├── scripts/
-│   └── download_footwear.py            # ✅ 下载 + 按 manifest 出 1000 张；--resample 重建划分
-├── data/
-│   ├── manifest.csv                    # ✅ 入 git：1000 个 id + 属性（抽样结果的真源）
-│   ├── metadata.csv                    # 生成：manifest + path
-│   ├── gallery/                        # 生成：1000 张图（不入 git）
-│   ├── raw/                            # 生成：Kaggle 原始数据（不入 git）
-│   └── image_features.pt               # 生成：嵌入缓存（不入 git）
-├── features/
-│   ├── embed.py                        # 待做：把 clip_core 的嵌入抽成可复用模块
-│   └── tag.py                          # 待做：CLIP 零样本属性标签
-├── retrieval/
-│   ├── query_parse.py                  # 待做：query → 结构化属性
-│   ├── rerank.py                       # 待做：属性一致性打分 + 融合
-│   └── search.py                       # 待做：query → top-K 端到端
-├── eval/
-│   ├── queries.json                    # 待做：评测 query + ground truth（入 git）
-│   └── eval.py                         # 待做：mAP / P@10 / Recall@10 / 按属性拆
+comp5523project/                        # ✅ 已有 / ⬜ 待补
+├── README.md                           # 用法总入口（结构、启动、数据、评测、分工）
+├── requirements.txt / .lock.txt
+├── dataset/                            # ① 数据的定义与构建
+│   ├── manifest.csv                    # ✅ 入 git：1000 个 id + 属性（唯一数据真源）
+│   └── buildGallery.py                 # ✅ 下载 + 按 manifest 出 1000 张；--resample 重建划分
+├── retrieval/                          # ② 检索主链路
+│   ├── clipCore.py                     # ✅ 内核：设备/模型/嵌入缓存/打分
+│   ├── searchCli.py                    # ✅ 命令行壳
+│   ├── searchApp.py                    # ✅ Gradio 网页壳（演示/录屏）
+│   ├── queryParse.py                   # ⬜ query → 结构化属性
+│   └── rerank.py                       # ⬜ 属性一致性打分 + 融合（注册成 eval 的 method）
+├── features/                           # ⬜ 可选：独立特征层
+│   ├── embed.py                        # ⬜ 把 clipCore 的嵌入抽成可复用模块
+│   └── tag.py                          # ⬜ CLIP 零样本属性标签
+├── evaluation/                         # ③ 评测
+│   ├── buildQueries.py                 # ✅ 生成 60 条 query（确定性）
+│   ├── queries.json                    # ✅ 入 git：query + 自动相关集 + strict 标记
+│   ├── judgements.json                 # ✅ 入 git：人眼精标（现状 6/20 条）
+│   ├── renderTopHits.py                # ✅ top-10 拼图，供人眼判
+│   ├── montages/                       # 生成，不入 git
+│   └── runEvaluation.py                # ✅ mAP/P@10/R@10，按 group 拆，写 results/
+├── results/                            # ④ <method>_<labels>.json，入 git
+├── data/                               # ⑤ 生成产物，整体不入 git
+│   ├── raw/                            #    Kaggle 原始快照（44k 图）
+│   ├── gallery/                        #    抽出的 1000 张
+│   ├── metadata.csv                    #    manifest + path
+│   └── image_features.pt               #    嵌入缓存
 └── docs/
     └── plan.md                         # 本文件
 ```
+
+分层原则：`dataset/` 定义输入、`retrieval/` 只管排序、`evaluation/` 只管判分（import `retrieval/clipCore.py` 复用能力），`data/` 与 `results/` 是产物。模块名 camelCase。
 
 **关键函数签名（伪代码）**：
 
@@ -171,17 +177,17 @@ def embed_texts(texts) -> np.ndarray                      # [M, d]
 def tag_images(img_paths, attr_schema) -> np.ndarray      # [N, A] 每属性 argmax/概率
 def attr_prompt(attr, value) -> str                       # "a shoe with {value} {attr}"
 
-# retrieval/query_parse.py
+# retrieval/queryParse.py
 def parse_query(text, attr_schema, color_map) -> dict     # {category, color, material, ...}
 
 # retrieval/rerank.py
 def attr_agree(query_attrs, img_attrs, attr_weights) -> float
 def rerank(q_emb, topk_emb, topk_attr, query_attrs) -> list[int]  # 重排后索引
 
-# retrieval/search.py
+# retrieval/searchPipeline.py
 def search(query, gallery, topk=50, top=10) -> list[(img_id, score)]
 
-# eval/eval.py
+# evaluation/runEvaluation.py
 def ap(ranked_ids, relevant_ids) -> float
 def precision_at_k(ranked_ids, relevant_ids, k) -> float
 def recall_at_k(ranked_ids, relevant_ids, k) -> float
@@ -198,7 +204,7 @@ def mean_ap(all_ranked, all_relevant) -> float
 |---|---|---|
 | 1–2 | 定域 + 取数 + 清洗 + 抽样 + metadata | data/* |
 | 2–3 | 图库嵌入 + baseline 检索（骨架跑通） | features/embed + search |
-| 3–4 | 写评测 query + 借属性标签定 ground truth | eval/queries.json |
+| 3–4 | 写评测 query + 借属性标签定 ground truth | evaluation/queries.json |
 | 4–6 | 属性解析 + 零样本打标 + 重排（完整 B） | tag + query_parse + rerank |
 | 6–7 | 轻量适应（学融合权重/软提示）+ 调参 | rerank 权重 |
 | 7–8 | 全量评测 + 失败分析 | eval |
@@ -221,7 +227,7 @@ def mean_ap(all_ranked, all_relevant) -> float
 
 参考仓库：`github.com/micycc/comp5523-sneakers-demo`（同为 COMP5523 的 CLIP + Gradio demo）。
 
-**可复用**：`scripts/download_subsample.py`（Kaggle 下载 + 分层抽样 + 补足）、`demo_ui.py`（Gradio Blocks + 嵌入缓存按 mtime 失效）、`demo_clip_rank.py`（CLI + open_clip/transformers 双后端 fallback）、`.gitignore` 约定。
+**可复用**：`buildGallery.py`（Kaggle 下载 + 分层抽样 + 补足）、`searchApp.py`（Gradio Blocks + 嵌入缓存按 mtime 失效）、`searchCli.py`（CLI，当前只用 open_clip 后端）、`.gitignore` 约定。
 
 **它缺的（正是评分点，必须自己补）**：无评测集/指标、无属性解析与重排、无 captioning 分支、无消融与失败分析。它等价于本文档的"组 1 Baseline"。
 

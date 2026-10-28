@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Score a retrieval method against eval/queries.json.
+"""Score a retrieval method against evaluation/queries.json.
 
 Metrics (all averaged over queries):
   mAP@50   mean average precision, relevant set capped at the ranking depth
@@ -7,15 +7,15 @@ Metrics (all averaged over queries):
   R@10     recall in the top 10 (hits / all relevant images in the gallery)
 
 --labels auto    uses the metadata-derived `relevant` list (all 60 queries)
---labels strict  uses the by-eye judgments in eval/judgements.json
+--labels strict  uses the by-eye judgments in evaluation/judgements.json
                  (only the queries that have been judged)
 
 Methods live in METHODS; add "prompt" / "rerank" there as they are built, so
 every number in the report comes from the same script and the same queries.
 
 Usage:
-  python eval/eval.py --method baseline
-  python eval/eval.py --method baseline --labels strict
+  python evaluation/runEvaluation.py --method baseline
+  python evaluation/runEvaluation.py --method baseline --labels strict
 """
 from __future__ import annotations
 
@@ -25,10 +25,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "retrieval"))
 
-QUERIES_PATH = ROOT / "eval" / "queries.json"
-JUDGEMENTS_PATH = ROOT / "eval" / "judgements.json"
+QUERIES_PATH = ROOT / "evaluation" / "queries.json"
+JUDGEMENTS_PATH = ROOT / "evaluation" / "judgements.json"
 RESULTS_DIR = ROOT / "results"
 DEPTH = 50          # ranking depth used for mAP
 TOPK = 10           # depth used for P@10 / R@10
@@ -48,10 +48,10 @@ def average_precision(ranked: list[str], relevant: set[str], depth: int) -> floa
 
 def rank_baseline(query: str, depth: int) -> list[str]:
     """Frozen CLIP: cosine similarity over cached image features."""
-    import clip_core
+    import clipCore
 
     ctx = _CTX
-    q = clip_core.embed_query(ctx["model"], ctx["tokenizer"], query, ctx["device"])
+    q = clipCore.embed_query(ctx["model"], ctx["tokenizer"], query, ctx["device"])
     scores = (ctx["feats"] @ q.T).squeeze(1)
     k = min(depth, len(ctx["rows"]))
     _vals, idxs = scores.topk(k)
@@ -64,12 +64,12 @@ _CTX: dict = {}
 
 
 def load_context() -> None:
-    import clip_core
+    import clipCore
 
-    rows, paths = clip_core.load_rows()
-    device = clip_core.get_device()
-    model, preprocess, tokenizer = clip_core.load_model(device)
-    feats = clip_core.get_image_features(model, preprocess, paths, device)
+    rows, paths = clipCore.load_rows()
+    device = clipCore.get_device()
+    model, preprocess, tokenizer = clipCore.load_model(device)
+    feats = clipCore.get_image_features(model, preprocess, paths, device)
     _CTX.update(rows=rows, paths=paths, device=device,
                 model=model, tokenizer=tokenizer, feats=feats)
     print(f"device: {device}  gallery: {len(rows)} images")

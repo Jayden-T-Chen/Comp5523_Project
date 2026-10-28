@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import gradio as gr
 
-from clip_core import (
+from clipCore import (
     get_device,
     get_image_features,
     load_model,

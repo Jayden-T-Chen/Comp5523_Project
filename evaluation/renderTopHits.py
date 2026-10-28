@@ -6,23 +6,26 @@ articleType, so a judgment can be written as pure relevance: does this image
 actually match the query?  Several queries stack vertically in one file.
 
 Usage:
-  python eval/make_montage.py --qid color_black
-  python eval/make_montage.py --qid color_black color_white --out /tmp/pair.png
-  python eval/make_montage.py --all-strict
+  python evaluation/renderTopHits.py --qid color_black
+  python evaluation/renderTopHits.py --qid color_black color_white --out /tmp/pair.png
+  python evaluation/renderTopHits.py --all-strict
 """
 from __future__ import annotations
 
 import argparse
 import csv
 import json
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "retrieval"))
+
 META_PATH = ROOT / "data" / "metadata.csv"
-QUERIES_PATH = ROOT / "eval" / "queries.json"
-OUT_DIR = ROOT / "eval" / "montages"
+QUERIES_PATH = ROOT / "evaluation" / "queries.json"
+OUT_DIR = ROOT / "evaluation" / "montages"
 
 COLS = 5
 CELL_W, CELL_H = 200, 240
@@ -44,15 +47,13 @@ def font(size: int) -> ImageFont.ImageFont:
 
 
 def render(qid_query: list[tuple[str, str]], topk: int) -> Path:
-    import sys
-    sys.path.insert(0, str(ROOT))
-    import clip_core
+    import clipCore
 
     meta = load_meta()
-    rows, paths = clip_core.load_rows()
-    device = clip_core.get_device()
-    model, preprocess, tokenizer = clip_core.load_model(device)
-    feats = clip_core.get_image_features(model, preprocess, paths, device)
+    rows, paths = clipCore.load_rows()
+    device = clipCore.get_device()
+    model, preprocess, tokenizer = clipCore.load_model(device)
+    feats = clipCore.get_image_features(model, preprocess, paths, device)
 
     per_q = len(qid_query)
     rows_h = (CELL_H + PAD) * 2 + TITLE_H
@@ -66,7 +67,7 @@ def render(qid_query: list[tuple[str, str]], topk: int) -> Path:
     for qi, (qid, query) in enumerate(qid_query):
         base_y = qi * rows_h
         draw.text((PAD, base_y + 6), f"{qid}   “{query}”", fill=(0, 0, 0), font=f_title)
-        hits = clip_core.search(model, tokenizer, feats, rows, query, topk, device)
+        hits = clipCore.search(model, tokenizer, feats, rows, query, topk, device)
         for i, hit in enumerate(hits[:COLS * 2]):
             r, c = divmod(i, COLS)
             x = PAD + c * (CELL_W + PAD)

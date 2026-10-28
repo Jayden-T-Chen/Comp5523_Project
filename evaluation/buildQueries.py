@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build eval/queries.json: 60 auto-labelled queries + 20 marked for strict judging.
+"""Build evaluation/queries.json: 60 auto-labelled queries + 20 marked for judging.
 
 Labels come from the metadata attributes (color / articleType / gender), so they
 are noisy: a product's `color` is the colour in its marketing name, not what the
@@ -15,7 +15,7 @@ Groups (60 total):
 Deterministic: counts + names decide everything, no RNG.
 
 Usage:
-  python eval/build_queries.py
+  python evaluation/buildQueries.py
 """
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 META_PATH = ROOT / "data" / "metadata.csv"
-OUT_PATH = ROOT / "eval" / "queries.json"
+OUT_PATH = ROOT / "evaluation" / "queries.json"
 
 MIN_REL_COMBO = 12      # a color x type query needs this many images to be worth asking
 MIN_REL_GENDER = 20     # type+"for men/women" needs this many

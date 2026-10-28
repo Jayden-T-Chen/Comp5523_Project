@@ -2,14 +2,14 @@
 """CLI: rank gallery images for text queries with CLIP.
 
 Usage:
-  python demo_clip_rank.py
-  python demo_clip_rank.py --query "black leather shoes" --top 8
+  python retrieval/searchCli.py
+  python retrieval/searchCli.py --query "black leather shoes" --top 8
 """
 from __future__ import annotations
 
 import argparse
 
-from clip_core import (
+from clipCore import (
     get_device,
     get_image_features,
     load_model,
