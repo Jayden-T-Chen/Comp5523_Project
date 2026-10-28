@@ -10,6 +10,11 @@ Metrics (all averaged over queries):
 --labels strict  uses the by-eye judgments in evaluation/judgements.json
                  (only the queries that have been judged)
 
+Reported numbers use `auto`, because its labels cover the whole gallery and are
+therefore comparable across methods. The strict pool was judged on the baseline
+top-10 only, so a method that surfaces new images is scored 0 on them until they
+are judged too - use strict to calibrate absolute quality, not to rank methods.
+
 Methods live in METHODS; add "prompt" / "rerank" there as they are built, so
 every number in the report comes from the same script and the same queries.
 
@@ -52,13 +57,45 @@ def rank_baseline(query: str, depth: int) -> list[str]:
 
     ctx = _CTX
     q = clipCore.embed_query(ctx["model"], ctx["tokenizer"], query, ctx["device"])
+    return _topk(q, depth)
+
+
+def rank_prompt(query: str, depth: int) -> list[str]:
+    """Same ranking, but the query is the mean of several prompt phrasings."""
+    import clipCore
+
+    ctx = _CTX
+    q = clipCore.embed_query_ensemble(
+        ctx["model"], ctx["tokenizer"], query, ctx["device"])
+    return _topk(q, depth)
+
+
+def _topk(q, depth: int) -> list[str]:
+    ctx = _CTX
     scores = (ctx["feats"] @ q.T).squeeze(1)
     k = min(depth, len(ctx["rows"]))
     _vals, idxs = scores.topk(k)
     return [ctx["rows"][i]["id"] for i in idxs.tolist()]
 
 
-METHODS = {"baseline": rank_baseline}
+def rank_rerank(query: str, depth: int) -> list[str]:
+    """Similarity + zero-shot attribute agreement over the coarse top-k.
+
+    The candidate pool is RERANK_DEPTH, independent of the metric cutoffs:
+    re-ranking 100 candidates and returning the best 50 (DEPTH) is the shipped
+    configuration; `depth` only bounds what the caller keeps.
+    """
+    import rerank
+
+    ctx = _CTX
+    beta = ctx.get("beta", rerank.BETA)
+    return rerank.rerank(
+        ctx["model"], ctx["tokenizer"], ctx["feats"], ctx["rows"],
+        query, max(depth, rerank.RERANK_DEPTH), ctx["device"], beta)
+
+
+METHODS = {"baseline": rank_baseline, "prompt": rank_prompt,
+           "rerank": rank_rerank}
 
 _CTX: dict = {}
 
@@ -133,8 +170,13 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--method", choices=sorted(METHODS), default="baseline")
     ap.add_argument("--labels", choices=["auto", "strict"], default="auto")
+    ap.add_argument("--beta", type=float, default=None,
+                    help="rerank fusion weight (default: rerank.BETA); "
+                         "non-default values get a _b<value> output suffix")
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
+    if args.beta is not None:
+        _CTX["beta"] = args.beta
 
     data = json.loads(QUERIES_PATH.read_text(encoding="utf-8"))
     queries = data["queries"]
@@ -147,6 +189,9 @@ def main() -> None:
         judged_map = json.loads(
             JUDGEMENTS_PATH.read_text(encoding="utf-8"))["judged"]
         queries = [q for q in queries if q["qid"] in judged_map]
+        if args.method != "baseline":
+            print(f"note: strict pool was judged on baseline top-10; "
+                  f"{args.method} ids outside it count 0 until judged")
         if not queries:
             raise SystemExit(
                 "No strict judgments yet. Render a query's top-10 with "
@@ -168,12 +213,29 @@ def main() -> None:
         print(f"  {g:<6}: n={s['n']:<3} " +
               "  ".join(f"{k}={s[k]:.4f}" for k in keys))
 
-    out = args.out or RESULTS_DIR / f"{args.method}_{args.labels}.json"
+    if args.out is not None:
+        out = args.out
+    elif args.beta is not None:
+        out = RESULTS_DIR / f"{args.method}_{args.labels}_b{args.beta:g}.json"
+    else:
+        out = RESULTS_DIR / f"{args.method}_{args.labels}.json"
+    extra = {}
+    if args.method == "rerank":
+        import queryParse
+        import rerank
+
+        extra["rerank_depth"] = rerank.RERANK_DEPTH
+        extra["beta"] = args.beta if args.beta is not None else rerank.BETA
+        extra["parser"] = {
+            "mask_short_matches": queryParse.MASK_SHORT_MATCHES,
+            "color_family_weight": queryParse.COLOR_FAMILY_WEIGHT,
+            "type_family_weight": queryParse.TYPE_FAMILY_WEIGHT,
+        }
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(
             {"method": args.method, "labels": args.labels,
-             "depth": DEPTH, "topk": TOPK, **summary, "per_query": rows},
+             "depth": DEPTH, "topk": TOPK, **extra, **summary, "per_query": rows},
             ensure_ascii=False, indent=2,
         ) + "\n",
         encoding="utf-8",

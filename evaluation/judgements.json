@@ -1,6 +1,6 @@
 {
   "note": "By-eye relevance over the top-10 pool returned by the baseline. 1 = the image matches the query on every stated attribute, 0 = it does not. Pool currently covers baseline top-10 only; extend a query's dict when a new method surfaces unseen ids.",
-  "rule": "Colour: judge the dominant visible colour of the shoe. Same-hue near neighbours count (charcoal->black, tan/beige->brown, navy->blue, maroon->red, khaki<->beige<->light olive; warm metals gold/copper<->bronze; cool metals silver<->light grey). A clearly different hue counts 0 (silver shoe for bronze, dark olive for khaki). Small accents (stripes, logos, soles) are ignored. Type: judge the shoe shape, not the metadata label (sneaker vs pump vs sandal vs dress shoe). Gender: only reject when the design is clearly the opposite gender (e.g. a pink thong for 'flip flops for men'); unisex designs count 1. Borderline cells are listed under `borderline` so they can be re-checked.",
+  "rule": "Colour: judge the dominant visible colour of the shoe. Same-hue near neighbours count (charcoal->black, tan/beige->brown, navy->blue, maroon->red, khaki<->beige<->light olive, silver<->light grey). Metals are split by warmth: silver/pewter count for 'silver'; bronze/copper/dark-brown-with-metallic-sheen count for 'bronze' (a brown shoe with a gold insole still counts), but a plainly gold/champagne shoe does not - gold is its own colour. A clearly different hue counts 0 (silver shoe for bronze, dark olive for khaki, charcoal for brown). Khaki, beige and mustard-tan are treated as one warm-neutral family, as a shopper would. Small accents (stripes, logos, soles) are ignored. Type: judge the shoe shape, not the metadata label; an athletic-looking sneaker is 'sports shoes' even when labelled Casual, and a heeled mule is 'heels' however low the heel. Gender: only reject when the design is clearly the opposite gender; unisex designs count 1.",
   "judged": {
     "color_black": {
       "9090": 1,
@@ -80,7 +80,7 @@
       "44780": 1,
       "6468": 1,
       "31216": 1,
-      "3654": 1,
+      "3654": 0,
       "34855": 1,
       "32742": 1,
       "4276": 1,
@@ -199,7 +199,7 @@
       "35655": 1,
       "7237": 0,
       "22868": 1,
-      "43474": 0,
+      "43474": 1,
       "49353": 1,
       "26532": 1,
       "12519": 1,
@@ -226,7 +226,7 @@
       "33123": 0,
       "14359": 1,
       "41703": 0,
-      "46601": 1,
+      "46601": 0,
       "53460": 1,
       "21388": 1
     },
@@ -243,25 +243,19 @@
       "17692": 1
     }
   },
-  "borderline": {
-    "type_heels": {
-      "20778": "silver mule, heel is low in the thumbnail"
+  "review": {
+    "date": "2026-10-28",
+    "how": "all 20 pools judged by one annotator; the 7 lowest-confidence cells were re-checked by the project owner on a single sheet (evaluation/montages/spotcheck.png)",
+    "changed": {
+      "type_casual_shoes/3654": "1 -> 0, reads as a sporty sneaker",
+      "combo_bronze_heels/46601": "1 -> 0, plain gold is not bronze",
+      "combo_beige_casual_shoes/43474": "0 -> 1, owner reads mustard-tan as khaki family"
     },
-    "type_casual_shoes": {
-      "3654": "lifestyle sneaker, reads sporty to some"
-    },
-    "combo_white_sports_shoes": {
-      "1546": "white shoe on a grey background"
-    },
-    "combo_khaki_casual_shoes": {
-      "26531": "pale olive, could be read as khaki"
-    },
-    "combo_beige_casual_shoes": {
-      "43474": "mustard rather than beige"
-    },
-    "combo_bronze_heels": {
-      "17012": "brown-gold mule, low heel",
-      "46601": "gold, counted as warm metal"
+    "kept": {
+      "type_heels/20778": "heeled mule counts as heels",
+      "combo_white_sports_shoes/1546": "still reads white",
+      "combo_khaki_casual_shoes/26531": "light olive accepted as khaki family",
+      "combo_bronze_heels/17012": "brown body with gold insole counts as bronze"
     }
   }
 }

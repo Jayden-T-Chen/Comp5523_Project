@@ -1,0 +1,164 @@
+{
+  "note": "P0 parser ablation; see README 5.5",
+  "beta": 0.1,
+  "rerank_depth": 100,
+  "n_queries": 60,
+  "configs": [
+    {
+      "name": "legacy",
+      "mask_short_matches": false,
+      "color_family_weight": 1.0,
+      "type_family_weight": 1.0,
+      "overall": {
+        "ap50": 0.3861,
+        "p10": 0.57,
+        "r10": 0.1823
+      },
+      "by_group": {
+        "color": {
+          "n": 20,
+          "ap50": 0.2972,
+          "p10": 0.58,
+          "r10": 0.1343
+        },
+        "combo": {
+          "n": 22,
+          "ap50": 0.3711,
+          "p10": 0.4773,
+          "r10": 0.2925
+        },
+        "type": {
+          "n": 18,
+          "ap50": 0.5032,
+          "p10": 0.6722,
+          "r10": 0.101
+        }
+      },
+      "cases": {
+        "color_grey": 0.13654428244342307,
+        "color_beige": 0.15339384185577834,
+        "color_olive": 0.3688414755497502,
+        "color_orange": 0.45217436345630924,
+        "combo_beige_heels": 0.0787202380952381,
+        "type_sports_sandals": 0.02851412314570209
+      }
+    },
+    {
+      "name": "mask",
+      "mask_short_matches": true,
+      "color_family_weight": 1.0,
+      "type_family_weight": 1.0,
+      "overall": {
+        "ap50": 0.3858,
+        "p10": 0.57,
+        "r10": 0.1823
+      },
+      "by_group": {
+        "color": {
+          "n": 20,
+          "ap50": 0.2972,
+          "p10": 0.58,
+          "r10": 0.1343
+        },
+        "combo": {
+          "n": 22,
+          "ap50": 0.3711,
+          "p10": 0.4773,
+          "r10": 0.2925
+        },
+        "type": {
+          "n": 18,
+          "ap50": 0.5024,
+          "p10": 0.6722,
+          "r10": 0.101
+        }
+      },
+      "cases": {
+        "color_grey": 0.13654428244342307,
+        "color_beige": 0.15339384185577834,
+        "color_olive": 0.3688414755497502,
+        "color_orange": 0.45217436345630924,
+        "combo_beige_heels": 0.0787202380952381,
+        "type_sports_sandals": 0.014039408866995073
+      }
+    },
+    {
+      "name": "color 0.5",
+      "mask_short_matches": true,
+      "color_family_weight": 0.5,
+      "type_family_weight": 1.0,
+      "overall": {
+        "ap50": 0.3965,
+        "p10": 0.5883,
+        "r10": 0.1874
+      },
+      "by_group": {
+        "color": {
+          "n": 20,
+          "ap50": 0.3153,
+          "p10": 0.625,
+          "r10": 0.1437
+        },
+        "combo": {
+          "n": 22,
+          "ap50": 0.3835,
+          "p10": 0.4864,
+          "r10": 0.2979
+        },
+        "type": {
+          "n": 18,
+          "ap50": 0.5024,
+          "p10": 0.6722,
+          "r10": 0.101
+        }
+      },
+      "cases": {
+        "color_grey": 0.2016078262716902,
+        "color_beige": 0.23310592611987033,
+        "color_olive": 0.3586005068377489,
+        "color_orange": 0.4221641657260549,
+        "combo_beige_heels": 0.08170113401091662,
+        "type_sports_sandals": 0.014039408866995073
+      }
+    },
+    {
+      "name": "color 0.25",
+      "mask_short_matches": true,
+      "color_family_weight": 0.25,
+      "type_family_weight": 1.0,
+      "overall": {
+        "ap50": 0.398,
+        "p10": 0.59,
+        "r10": 0.1863
+      },
+      "by_group": {
+        "color": {
+          "n": 20,
+          "ap50": 0.3145,
+          "p10": 0.635,
+          "r10": 0.1453
+        },
+        "combo": {
+          "n": 22,
+          "ap50": 0.3885,
+          "p10": 0.4818,
+          "r10": 0.2934
+        },
+        "type": {
+          "n": 18,
+          "ap50": 0.5024,
+          "p10": 0.6722,
+          "r10": 0.101
+        }
+      },
+      "cases": {
+        "color_grey": 0.2220182616771801,
+        "color_beige": 0.25489282327622986,
+        "color_olive": 0.2918791217334781,
+        "color_orange": 0.4007845561634128,
+        "combo_beige_heels": 0.08954274891774891,
+        "type_sports_sandals": 0.014039408866995073
+      }
+    }
+  ]
+}

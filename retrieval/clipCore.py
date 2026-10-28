@@ -18,6 +18,18 @@ MODEL_NAME = "ViT-B-32"
 PRETRAINED = "openai"
 BATCH = 32
 
+# Product thumbnails are catalogue shots on a light background, but the queries
+# are terse shopper phrases. Averaging a few phrasings pulls the text anchor
+# towards the caption style CLIP learned to pair with such images.
+PROMPT_TEMPLATES = (
+    "{q}",
+    "a photo of {q}",
+    "a product photo of {q}",
+    "a pair of {q}",
+    "a {q} on a white background",
+    "a close-up photo of {q}",
+)
+
 
 def get_device() -> str:
     if torch.backends.mps.is_available():      # Apple Silicon
@@ -78,6 +90,19 @@ def embed_query(model, tokenizer, query: str, device) -> torch.Tensor:
     with torch.no_grad():
         tok = tokenizer([query]).to(device)
         t = model.encode_text(tok)
+        t = t / t.norm(dim=-1, keepdim=True)
+    return t.cpu()
+
+
+def embed_query_ensemble(model, tokenizer, query: str, device,
+                         templates=PROMPT_TEMPLATES) -> torch.Tensor:
+    """Mean of several prompt phrasings, re-normalised, shape [1, d]."""
+    texts = [t.format(q=query) for t in templates]
+    with torch.no_grad():
+        tok = tokenizer(texts).to(device)
+        t = model.encode_text(tok)
+        t = t / t.norm(dim=-1, keepdim=True)
+        t = t.mean(dim=0, keepdim=True)
         t = t / t.norm(dim=-1, keepdim=True)
     return t.cpu()
 

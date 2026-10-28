@@ -140,15 +140,12 @@ comp5523project/                        # ✅ 已有 / ⬜ 待补
 │   ├── clipCore.py                     # ✅ 内核：设备/模型/嵌入缓存/打分
 │   ├── searchCli.py                    # ✅ 命令行壳
 │   ├── searchApp.py                    # ✅ Gradio 网页壳（演示/录屏）
-│   ├── queryParse.py                   # ⬜ query → 结构化属性
-│   └── rerank.py                       # ⬜ 属性一致性打分 + 融合（注册成 eval 的 method）
-├── features/                           # ⬜ 可选：独立特征层
-│   ├── embed.py                        # ⬜ 把 clipCore 的嵌入抽成可复用模块
-│   └── tag.py                          # ⬜ CLIP 零样本属性标签
+│   ├── queryParse.py                   # ✅ query → {color, type, gender}，词表对齐 metadata
+│   └── rerank.py                       # ✅ 属性校验重排（已注册成 eval 的 method：rerank）
 ├── evaluation/                         # ③ 评测
 │   ├── buildQueries.py                 # ✅ 生成 60 条 query（确定性）
 │   ├── queries.json                    # ✅ 入 git：query + 自动相关集 + strict 标记
-│   ├── judgements.json                 # ✅ 入 git：人眼精标（现状 6/20 条）
+│   ├── judgements.json                 # ✅ 入 git：人眼精标（20/20 条）
 │   ├── renderTopHits.py                # ✅ top-10 拼图，供人眼判
 │   ├── montages/                       # 生成，不入 git
 │   └── runEvaluation.py                # ✅ mAP/P@10/R@10，按 group 拆，写 results/
