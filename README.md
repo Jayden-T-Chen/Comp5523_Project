@@ -15,9 +15,7 @@
 
 ```
 comp5523project/
-├── README.md
-├── requirements.txt            # 依赖区间
-├── requirements.lock.txt       # 实测通过的精确版本
+├── README.md                   # 结构、启动、依赖版本、数据、评测、分工
 │
 ├── dataset/                    # ① 数据：怎么造出这 1000 张图
 │   ├── manifest.csv            #    入 git，唯一的数据真源（1000 个 id + 属性）
@@ -81,7 +79,9 @@ cd comp5523project
 
 # 1) 虚拟环境（Python 3.11/3.12）
 python3.12 -m venv .venv && source .venv/bin/activate      # Windows: py -3.12 -m venv .venv && .venv\Scripts\Activate.ps1
-python -m pip install -U pip -r requirements.txt
+python -m pip install -U pip
+python -m pip install torch==2.14.1 torchvision==0.29.1 open-clip-torch==3.3.0 \
+                     gradio==6.31.0 Pillow==12.3.0 numpy==2.5.4 kaggle==2.2.5
 
 # 2) Kaggle 凭据（只需一次）
 mkdir -p ~/.kaggle && echo 'KGAT_你的token' > ~/.kaggle/access_token && chmod 600 ~/.kaggle/access_token
@@ -114,7 +114,7 @@ python retrieval/searchCli.py --query "black leather shoes" --top 8
 | `evaluation/judgements.json` | 人眼精标：`qid -> {图片 id: 0/1}`，只判 top-10 池 | 看拼图后手填 |
 | `evaluation/runEvaluation.py` | 打分：mAP@50 / P@10 / R@10，按 group 拆，导出 `results/<method>_<labels>.json` | `python evaluation/runEvaluation.py --method baseline [--labels strict]` |
 | `results/` | 各方法 × 各标签口径的历史成绩 | 由 `runEvaluation.py` 写入，入 git 便于对比 |
-| `requirements.txt` / `.lock.txt` | 依赖区间 / 实测精确版本 | `pip install -r requirements.txt`（复现用 lock） |
+| （无 requirements 文件） | 依赖版本直接写在 §2 的安装命令里，实测即锁定 | 照 §2 复制一行安装 |
 | `docs/plan.md` | 方案：数据集、属性 schema、指标与消融、架构、排期 | 写报告/分工时对着看 |
 
 ---

@@ -132,8 +132,7 @@ query 文本
 
 ```
 comp5523project/                        # ✅ 已有 / ⬜ 待补
-├── README.md                           # 用法总入口（结构、启动、数据、评测、分工）
-├── requirements.txt / .lock.txt
+├── README.md                           # 用法总入口（结构、启动、依赖版本、数据、评测、分工）
 ├── dataset/                            # ① 数据的定义与构建
 │   ├── manifest.csv                    # ✅ 入 git：1000 个 id + 属性（唯一数据真源）
 │   └── buildGallery.py                 # ✅ 下载 + 按 manifest 出 1000 张；--resample 重建划分
