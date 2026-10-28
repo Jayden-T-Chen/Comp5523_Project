@@ -26,12 +26,15 @@ mkdir -p ~/.kaggle && echo 'KGAT_你的token' > ~/.kaggle/access_token && chmod 
 # 3) 取数据：自动下载 Kaggle 数据集 → 按 manifest 复制出那 1000 张 → 写 metadata.csv
 python scripts/download_footwear.py
 
-# 4) CLI 验证检索（首次会嵌入 1000 张并存缓存，M1 约 1~3 分钟）
+# 4) CLI 验证检索（首次会嵌入 1000 张并存缓存；M1 实测约 27 秒，含加载模型）
 python demo_clip_rank.py --query "black leather shoes" --top 8
 
 # 5) 网页 demo（本机浏览器打开 http://127.0.0.1:7860）
 python demo_ui.py
 ```
+
+> 已在 MacBook Air M1（macOS 14.8 / Python 3.12 / torch 2.14.1）实测：`device: mps`，1000 张嵌入约 27 秒，CLI 排序正常，Gradio 页面 `127.0.0.1:7860` 返回 200。
+> 首次运行会看到 `QuickGELU mismatch ... pretrained tag 'openai'` 的 UserWarning，这是 open_clip 加载 openai 权重时的已知提示，可忽略。
 
 ---
 
@@ -45,7 +48,8 @@ python demo_ui.py
 | `scripts/download_footwear.py` | 数据脚本：下载/解压 Kaggle 数据集、按 `data/manifest.csv` 复制图片、生成 `data/metadata.csv`；`--resample` 才重新抽样 | `python scripts/download_footwear.py`（复现）/ `--resample`（重建划分，仅维护者） |
 | `data/manifest.csv` | **唯一提交进 git 的数据文件**：1000 条样本的 id 与属性，锁定"到底是哪 1000 张" | 由脚本读取；不要手工改 |
 | `data/`（其余） | `raw/`（原始数据集）、`gallery/`（抽出的 1000 张）、`metadata.csv`（含图片路径）、`image_features.pt`（嵌入缓存） | 全部由脚本生成，已在 `.gitignore` |
-| `requirements.txt` | 运行依赖（torch / open-clip-torch / gradio / kaggle …） | `pip install -r requirements.txt`；装好后建议 `pip freeze > requirements.lock.txt` 锁版本 |
+| `requirements.txt` | 运行依赖（torch / open-clip-torch / gradio / kaggle …），写的是版本区间 | `pip install -r requirements.txt` |
+| `requirements.lock.txt` | 本机实测通过的**精确版本**（torch 2.14.1 / open-clip-torch 3.3.0 / gradio 6.31.0，Python 3.12） | 想完全复现就用 `pip install -r requirements.lock.txt`；换环境后重装建议用这一份 |
 | `docs/plan.md` | 项目方案：数据集、属性 schema、指标与消融、代码架构、10 天排期 | 写报告/分工时对着看 |
 | `.gitignore` | 排除 `data/`（除 manifest）、虚拟环境、嵌入缓存、Kaggle token | — |
 
