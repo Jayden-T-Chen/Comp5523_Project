@@ -31,12 +31,12 @@ python -m pip install torch==2.14.1 torchvision==0.29.1 open-clip-torch==3.3.0 \
 python retrieval/searchCli.py --query "black leather shoes" --top 8
 ```
 
-仓库是 private：只有被加为 collaborator 的 GitHub 账号能 clone，其他访问返回 404。
-加人在网页 Settings → Collaborators and teams，或者：
+仓库公开可读：任何人直接 `git clone` / `git pull` 就能取到代码、图库和全部结果，不需要授权。
+写权限仍只在 owner 和被邀请的人身上，加提交权限在网页 Settings → Collaborators and teams，或者：
 
 ```bash
 gh api -X PUT repos/Jayden-T-Chen/Comp5523_Project/collaborators/<github-用户名> \
-   -f permission=pull          # pull=只读，push=可提交
+   -f permission=push          # push=可提交，pull=只读
 ```
 
 图库与 metadata 随仓库分发；首次运行会联网拉 CLIP 权重（几百 MB），之后走本地缓存。

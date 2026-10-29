@@ -682,8 +682,8 @@ words without dropping a claim.
   named in the caption or the text. Observations with no archived sweep stay in prose (§6.8).
 - Include the AI-use disclosure and the member-contribution table (templates below).
 - Give the code location on page 1: `https://github.com/Jayden-T-Chen/Comp5523_Project`. The
-  repository is private, so the marker needs a read-only collaborator invite, or the archive
-  goes in with the submission.
+  repository is public, so the link alone lets a marker clone the gallery, the labels and the
+  evaluation suite; no invite or archive is needed.
 
 ### 11.4 AI-use disclosure (draft; confirm against actual use)
 
