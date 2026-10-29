@@ -23,12 +23,20 @@ python evaluation/tools/runEvaluation.py --method rerank   # 打分，写 result
 换机器首次安装（Python 3.11/3.12）：
 
 ```bash
-git clone <仓库地址> comp5523project && cd comp5523project
+git clone https://github.com/Jayden-T-Chen/Comp5523_Project.git comp5523project && cd comp5523project
 python3.12 -m venv .venv && source .venv/bin/activate      # Windows: py -3.12 -m venv .venv && .venv\Scripts\Activate.ps1
 python -m pip install -U pip
 python -m pip install torch==2.14.1 torchvision==0.29.1 open-clip-torch==3.3.0 \
                      gradio==6.31.0 Pillow==12.3.0 numpy==2.5.4
 python retrieval/searchCli.py --query "black leather shoes" --top 8
+```
+
+仓库是 private：只有被加为 collaborator 的 GitHub 账号能 clone，其他访问返回 404。
+加人在网页 Settings → Collaborators and teams，或者：
+
+```bash
+gh api -X PUT repos/Jayden-T-Chen/Comp5523_Project/collaborators/<github-用户名> \
+   -f permission=pull          # pull=只读，push=可提交
 ```
 
 图库与 metadata 随仓库分发；首次运行会联网拉 CLIP 权重（几百 MB），之后走本地缓存。
@@ -44,6 +52,7 @@ M1 上 1000 张图编码约 15 秒，之后起服务只加载缓存。
 | 人眼精标（20 条） | `python evaluation/tools/runEvaluation.py --method baseline --labels strict` |
 | 比较两组结果 | `python evaluation/tools/compareResults.py results/baseline_auto.json results/rerank_auto.json` |
 | 解析器消融 | `python evaluation/tools/ablateParser.py` |
+| 候选池 / β 扫描 | `python evaluation/tools/ablateFusion.py` |
 | 失败案例图 | `python evaluation/tools/renderFailureCases.py` |
 
 ### 1.1 推荐演示 query
@@ -97,14 +106,15 @@ comp5523project/
 │   │   ├── queries_sandal.json     #      Sandal 合并口径
 │   │   ├── queries_heldout.json    #      30 条冻结留出集（20 改写 + 10 拼错）
 │   │   └── judgements.json         #      人眼精标（当前 baseline top-10，20×10 格）
-│   ├── tools/                  #    四个入口脚本
+│   ├── tools/                  #    五个入口脚本
 │   │   ├── runEvaluation.py        #      mAP@50 / P@10 / R@10 → results/
 │   │   ├── compareResults.py       #      配对 bootstrap（Δ + 95% CI）
 │   │   ├── ablateParser.py         #      解析器四配置消融
+│   │   ├── ablateFusion.py         #      候选池 × β 扫描
 │   │   └── renderFailureCases.py   #      baseline / rerank 上下对照图
 │   └── montages/               #    生成的图（不入 git）
 │
-├── results/                    # ⑤ 结果存档：<method>_<labels>.json，入 git
+├── results/                    # ⑤ 结果存档：<method>_<labels>.json + 两份消融，入 git
 └── .venv/                      # 本地虚拟环境（不入 git）
 ```
 
@@ -151,7 +161,8 @@ score = cos(query, image) + β · Π_a ( Σ_{v∈a} w_v · P_a(v | image) )
 
 关键常量集中在 `retrieval/rerank.py` 与 `queryParse.py`：`BETA = 0.1`、`RERANK_DEPTH = 100`、
 `COLOR_FAMILY_WEIGHT = 0.5`、`TYPE_FAMILY_WEIGHT = 1.0`、`MASK_SHORT_MATCHES = True`。
-权重与候选深度的取值依据（含色族 0.25、β 0.2–1.5 的对照）见
+权重与候选深度的取值依据都在 `results/`：色族 0.25 与 β 0.2–1.5 的对照分别见
+`parser_ablation.json`、`fusion_ablation.json`，说明见
 [`docs/projectReport.md`](docs/projectReport.md) 的 §4 与 §6。
 
 ---
@@ -169,7 +180,8 @@ score = cos(query, image) + β · Π_a ( Σ_{v∈a} w_v · P_a(v | image) )
 | `queries_heldout.json` | 另 30 条（20 改写 + 10 拼错），冻结 | 改动前后复核，不参与调参 |
 
 指标 mAP@50（主）、P@10（头部）、R@10（召回，受相关集大小限制）；显著性用配对 bootstrap
-（按 query 重采样 10,000 次，种子 0，2.5/97.5 分位）。`results/` 里每个方法 × 标签的结果都含逐 query 明细。
+（按 query 重采样 10,000 次，种子 0，2.5/97.5 分位）。`results/` 里每个方法 × 标签的结果都含
+逐 query 明细（`parser_ablation.json` 只存四组配置的汇总）。
 
 | 方法 | mAP@50 | P@10 | R@10 | 相对 baseline |
 | --- | --- | --- | --- | --- |
@@ -206,6 +218,7 @@ python evaluation/tools/compareResults.py results/baseline_auto_heldout.json res
 
 # 消融与配图
 python evaluation/tools/ablateParser.py                                       # parser_ablation.json
+python evaluation/tools/ablateFusion.py                                       # fusion_ablation.json
 python evaluation/tools/renderFailureCases.py                                 # montages/failureCases.png
 ```
 

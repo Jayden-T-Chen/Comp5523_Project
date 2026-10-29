@@ -135,14 +135,14 @@ number below.
 
 | Field | Example | Role |
 | --- | --- | --- |
-| `id` | 15970 | File name and ranking output |
-| `path` | `data/gallery/15970.jpg` | Relative to the repository root |
-| `articleType` | Casual Shoes | Type slot and type labels |
+| `id` | 26658 | File name and ranking output |
+| `path` | `data/gallery/26658.jpg` | Relative to the repository root |
+| `articleType` | Casual Shoes | Type slot and type labels (8 values) |
 | `color` | Black | Colour slot and colour labels (40 values) |
 | `gender` | Men | Gender slot and labels (500 / 500) |
-| `category` | Footwear | Sanity check only |
-| `usage`, `season`, `year` | Casual, Summer, 2011 | Display only |
-| `display_name` | "Puma Men Black Sneakers" | Interface caption only |
+| `category` | Shoes | Sanity check only (Shoes 804 / Flip Flops 126 / Sandal 70) |
+| `usage`, `season`, `year` | Casual, Summer, 2012 | Display only |
+| `display_name` | "Puma Men Basics Black Casual Shoes" | Interface caption only |
 
 `dataset/manifest.csv` records the 1,000 sampled ids and their attributes; `dataset/NOTICE`
 records provenance, licence (MIT) and the resize rule. The metadata is the source of the
@@ -387,20 +387,28 @@ so we keep 0.5.
 
 ### 6.4 Candidate depth and fusion weight
 
-| Candidate pool | mAP@50 | P@10 | Pool recall |
-| --- | --- | --- | --- |
-| 50 | 0.3747 | 0.6250 | 0.477 |
-| **100 (shipped)** | **0.4078** | **0.6283** | 0.655 |
-| 200 | 0.4113 | 0.6283 | 0.818 |
+From `results/fusion_ablation.json` (`evaluation/tools/ablateFusion.py`: one process, one
+gallery, the shipped parser, one knob moved per row). The shipped point is pool 100, β 0.1.
 
-The 0.0597 total decomposes into +0.027 from attribute re-ranking on the same top-50 pool
-(0.3481 → 0.3747) and +0.033 from deepening the pool to 100 (0.3747 → 0.4078). P@10 barely
+| Candidate pool | β | mAP@50 | P@10 | Pool recall | Grey AP | Beige AP |
+| --- | --- | --- | --- | --- | --- | --- |
+| 50 | 0.1 | 0.3747 | 0.6250 | 0.477 | 0.182 | 0.183 |
+| **100** | **0.1** | **0.4078** | **0.6283** | 0.655 | 0.196 | 0.182 |
+| 200 | 0.1 | 0.4113 | 0.6283 | 0.818 | 0.214 | 0.182 |
+| 100 | 0.2 | 0.4134 | 0.6350 | 0.655 | 0.188 | 0.176 |
+| 100 | 0.4 | 0.4142 | 0.6333 | 0.655 | 0.182 | 0.172 |
+| 100 | 0.8 | 0.4136 | 0.6283 | 0.655 | 0.188 | 0.166 |
+| 100 | 1.5 | 0.4132 | 0.6250 | 0.655 | 0.184 | 0.165 |
+
+The 0.0597 total decomposes into +0.0266 from attribute re-ranking on the same top-50 pool
+(0.3481 → 0.3747) and +0.0331 from deepening the pool to 100 (0.3747 → 0.4078). P@10 barely
 moves across depths (0.625 → 0.628), which places the head gain in the re-ranking itself
-rather than in the deeper pool. A pool of 200 adds 0.0035, inside the noise, at twice the
+rather than in the deeper pool; a pool of 200 adds 0.0035, inside the noise, at twice the
 scoring cost.
 
-Raising β from 0.1 to 0.2–1.5 lifts mAP to 0.413–0.416, but grey falls from 0.196 to
-0.184–0.191 and beige from 0.182 to 0.165–0.176. Higher β amplifies CLIP's colour
+Stronger fusion is the same trade in reverse: β = 0.2–1.5 buys up to 0.0064 mAP and 0.0067
+P@10 over the shipped row while grey loses up to 0.014 AP, beige up to 0.017, and
+`combo_beige_heels` falls from 0.106 to 0.096 at β = 1.5. Higher β amplifies CLIP's colour
 confusion, so the aggregate gain is bought with visible failures; we keep β = 0.1.
 
 ### 6.5 Human calibration and label sensitivity
@@ -449,22 +457,30 @@ aggregate number from hiding the cases where the method is not usable.
 
 ### 6.8 Negative results and rejected variants
 
-- **Prompt ensembling.** Six templates averaged lose 5.1% mAP; every template loses, and the
-  loss grows with the number of attributes in the query. The worst template ("a {q} on a
-  white background") drops combo P@10 from 0.505 to 0.386. A control that crops the image
-  background widens the loss (−0.132 to −0.140), locating the cause on the text side: the
-  template words dilute the colour and type terms inside one pooled vector.
+The first three bullets are archived sweeps; the last four are scope decisions and
+single-case observations from the same measurement code, so they carry no table.
+
+- **Prompt ensembling.** Averaging six templates loses 5.1% mAP (0.3302 against 0.3481) and
+  0.018 P@10 (`results/prompt_auto.json`). The loss is not spread evenly: type queries drop
+  0.0451 mAP and 0.050 P@10, while colour and combo drop about 0.006 each. Templates that
+  describe the setting rather than the shoe do most damage where the object class is itself
+  the discriminative cue, because the template words dilute the colour and type terms inside
+  one pooled vector. Encoding the query as written avoids the loss.
 - **Higher β.** See §6.4: aggregate gain, visible colour regressions.
 - **Colour family at 0.25.** See §6.3: +0.0053 mAP, wider worst-case regression.
-- **Per-slot β.** Separate colour and type weights improved mAP by less than 0.001, with a
-  confidence interval crossing zero; one shared β is kept.
-- **Contrastive colour term.** A penalty against confusable colours lowered bronze AP, so
-  the score keeps the positive attribute term only.
-- **Deeper attribute keys.** Laces, closures, toe shape and material appear in fewer than
-  0.1% of `display_name` values and are not reliably visible at this resolution; they would
-  require detection or a vision-language model, beyond the course scope.
-- **Fine-tuning and captioning.** No domain image-text pairs exist for fine-tuning, and a
-  captioning branch adds a lossy intermediate text; the method stays training-free.
+- **Per-slot β.** Separate colour and type weights moved mAP by less than one in a thousand,
+  inside the bootstrap noise; one shared β is kept.
+- **Contrastive colour term.** A penalty against confusable colours lowered the bronze case,
+  so the score keeps the positive attribute term only.
+- **Deeper attribute keys.** In the 1,000 catalogue titles a lace word appears in 0.1%, a
+  closure word in 0.4%, a toe term in 0.8% and a material word in 3.0%; a material term in a
+  marketing title is not a grounded visual label, and none of them is reliably visible at
+  480×640. Extracting them would need detection or a vision-language model, beyond the
+  course scope.
+- **Fine-tuning and captioning.** The only text the catalogue pairs with an image is its
+  marketing title and one base colour, which are already the labels the evaluation uses, so
+  fine-tuning would train on the test signal; a captioning branch adds a lossy intermediate
+  text. The method stays training-free.
 
 ---
 
@@ -652,7 +668,7 @@ words without dropping a claim.
   below.
 - Table 1: dataset and query sets (merge §3.2 and §5.1).
 - Table 2: main results and group breakdown (merge §6.1 and §6.2).
-- Table 3: parser ablation and candidate depth (merge §6.3 and §6.4).
+- Table 3: parser ablation and fusion sweep (merge §6.3 and §6.4).
 - Table 4: label sensitivity, held-out and failures (merge §6.5–6.7, or keep failures as a
   short list if space is tight).
 
@@ -662,9 +678,12 @@ words without dropping a claim.
   table of contents.
 - APA 7th edition for references and in-text citations.
 - Figures and tables count towards the page limit; references and peer review do not.
-- Every number in the report must match a file in `results/`; cite the script that produced
-  it in the caption or the text.
+- Every number in a table must match a file in `results/`, with the script that produced it
+  named in the caption or the text. Observations with no archived sweep stay in prose (§6.8).
 - Include the AI-use disclosure and the member-contribution table (templates below).
+- Give the code location on page 1: `https://github.com/Jayden-T-Chen/Comp5523_Project`. The
+  repository is private, so the marker needs a read-only collaborator invite, or the archive
+  goes in with the submission.
 
 ### 11.4 AI-use disclosure (draft; confirm against actual use)
 
@@ -732,6 +751,7 @@ python evaluation/tools/compareResults.py results/baseline_auto.json results/rer
 python evaluation/tools/compareResults.py results/baseline_auto_heldout.json results/rerank_auto_heldout.json --by kind
 
 # Ablation and figure
-python evaluation/tools/ablateParser.py
-python evaluation/tools/renderFailureCases.py
+python evaluation/tools/ablateParser.py                                       # parser_ablation.json
+python evaluation/tools/ablateFusion.py                                       # fusion_ablation.json
+python evaluation/tools/renderFailureCases.py                                 # montages/failureCases.png
 ```
