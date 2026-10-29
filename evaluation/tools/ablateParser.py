@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ablate the P0 parser changes (README 5.5) on the 60 auto queries.
+"""Ablate the parser on the 60 auto queries (docs/projectReport.md 6.3).
 
 Four configurations, one process, one gallery:
   legacy       no phrase masking, every alias value at full weight
@@ -43,7 +43,7 @@ CASES = ["color_grey", "color_beige", "color_olive", "color_orange",
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Parser ablation (P0)")
+    ap = argparse.ArgumentParser(description="Parser ablation")
     ap.add_argument("--out", type=Path,
                     default=RESULTS_DIR / "parser_ablation.json")
     args = ap.parse_args()
@@ -80,7 +80,7 @@ def main() -> None:
         )
 
     payload = {
-        "note": "P0 parser ablation; see README 5.5",
+        "note": "Parser ablation; see docs/projectReport.md 6.3",
         "beta": rerank.BETA,
         "rerank_depth": rerank.RERANK_DEPTH,
         "n_queries": len(queries),

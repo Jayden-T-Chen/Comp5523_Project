@@ -1,5 +1,5 @@
 {
-  "note": "P0 parser ablation; see README 5.5",
+  "note": "Parser ablation; see docs/projectReport.md 6.3",
   "beta": 0.1,
   "rerank_depth": 100,
   "n_queries": 60,
