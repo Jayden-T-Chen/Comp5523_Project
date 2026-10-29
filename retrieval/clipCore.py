@@ -41,7 +41,9 @@ def get_device() -> str:
 
 def load_rows() -> tuple[list[dict], list[Path]]:
     if not META_PATH.is_file():
-        raise SystemExit(f"Missing {META_PATH}. Run scripts/download_footwear.py first.")
+        raise SystemExit(
+            f"Missing {META_PATH}. It ships with the repository; restore "
+            "data/gallery/ and data/metadata.csv.")
     rows = list(csv.DictReader(META_PATH.open(encoding="utf-8")))
     paths = [ROOT / r["path"] for r in rows]
     missing = [str(p) for p in paths if not p.is_file()]
@@ -74,15 +76,22 @@ def build_image_features(model, preprocess, paths, device) -> torch.Tensor:
     return torch.cat(feats, dim=0)
 
 
+def gallery_signature(paths: list[Path]) -> tuple:
+    """Count, newest mtime and total bytes: any image swap changes the key."""
+    stats = [(p.stat().st_mtime_ns, p.stat().st_size) for p in paths]
+    return (len(stats), max(m for m, _s in stats), sum(s for _m, s in stats))
+
+
 def get_image_features(model, preprocess, paths, device) -> torch.Tensor:
-    """Return cached features if present and newer than metadata, else rebuild."""
-    if CACHE_PATH.is_file() and CACHE_PATH.stat().st_mtime >= META_PATH.stat().st_mtime:
+    """Return cached features when the gallery matches the stored signature."""
+    sig = gallery_signature(paths)
+    if CACHE_PATH.is_file():
         blob = torch.load(CACHE_PATH, map_location="cpu")
-        if blob.get("n") == len(paths):
+        if blob.get("sig") == sig:
             return blob["feats"]
     feats = build_image_features(model, preprocess, paths, device)
     CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({"n": len(paths), "feats": feats}, CACHE_PATH)
+    torch.save({"sig": sig, "feats": feats}, CACHE_PATH)
     return feats
 
 
