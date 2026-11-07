@@ -71,7 +71,7 @@ def main(args) -> None:
     device = clipCore.get_device()
 
     payload = {
-        "note": "Encoder-configuration check; see docs/projectReport.md 7.3. "
+        "note": "Encoder-configuration check; see docs/projectReport.md 7.2. "
                 "The shipped configuration is 'gelu', which is also what "
                 "results/*.json and data/image_features.pt were produced with.",
         "device": device,

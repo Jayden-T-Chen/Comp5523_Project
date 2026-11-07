@@ -1,0 +1,36 @@
+{
+  "a": "results/baseline_strict.json",
+  "b": "results/rerank_strict.json",
+  "n_queries": 20,
+  "by": "group",
+  "resamples": 10000,
+  "seed": 0,
+  "metrics": {
+    "p10": {
+      "a": 0.925,
+      "b": 0.9400000000000001,
+      "delta": 0.014999999999999996,
+      "ci95": [
+        -0.009999999999999998,
+        0.039999999999999994
+      ],
+      "better": 3,
+      "worse": 1,
+      "tied": 16
+    }
+  },
+  "breakdown": {
+    "color": {
+      "n_queries": 6,
+      "p10": 0.016666666666666663
+    },
+    "combo": {
+      "n_queries": 8,
+      "p10": 0.012499999999999997
+    },
+    "type": {
+      "n_queries": 6,
+      "p10": 0.016666666666666663
+    }
+  }
+}

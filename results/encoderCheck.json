@@ -1,5 +1,5 @@
 {
-  "note": "Encoder-configuration check; see docs/projectReport.md 7.3. The shipped configuration is 'gelu', which is also what results/*.json and data/image_features.pt were produced with.",
+  "note": "Encoder-configuration check; see docs/projectReport.md 7.2. The shipped configuration is 'gelu', which is also what results/*.json and data/image_features.pt were produced with.",
   "device": "mps",
   "gallery": 1000,
   "n_queries": 60,
@@ -32,8 +32,8 @@
           "unjudged": 0
         },
         "rerank": {
-          "judged": 146,
-          "unjudged": 54
+          "judged": 200,
+          "unjudged": 0
         }
       }
     },
@@ -61,12 +61,12 @@
       },
       "top10_against_the_judged_pool": {
         "baseline": {
-          "judged": 156,
-          "unjudged": 44
+          "judged": 167,
+          "unjudged": 33
         },
         "rerank": {
-          "judged": 134,
-          "unjudged": 66
+          "judged": 169,
+          "unjudged": 31
         }
       }
     }

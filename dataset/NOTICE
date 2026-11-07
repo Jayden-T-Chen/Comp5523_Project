@@ -8,13 +8,13 @@ Source
   License:   MIT, as declared in the dataset's metadata on Kaggle.
 
 What this repository uses
-  Only the 1,000 products pinned in dataset/manifest.csv. Their photos ship
+  Only the 1,000 products listed in data/metadata.csv. Their photos ship
   with this repository in data/gallery/ as 480x640 JPEGs, downscaled from the
   high-resolution originals with Lanczos and saved at quality 90; 5 products
   whose largest upstream copy is below 480x640 are upscaled to the same size.
-  data/metadata.csv
-  holds the matching rows. The code reads only data/gallery/ and
-  data/metadata.csv.
+  data/metadata.csv is that frozen sample: one row per product with the
+  upstream attribute fields and the local image path. The code reads only
+  data/gallery/ and data/metadata.csv.
 
 How the 1,000 were selected
   masterCategory == Footwear (9,222 rows)

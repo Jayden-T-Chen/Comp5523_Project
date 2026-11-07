@@ -11,23 +11,23 @@
     "type_family_weight": 1.0
   },
   "beta": 0.1,
-  "unjudged_cells_scored_zero": 54,
+  "unjudged_cells_scored_zero": 0,
   "n_queries": 20,
   "overall": {
-    "p10": 0.675
+    "p10": 0.94
   },
   "by_group": {
     "color": {
       "n": 6,
-      "p10": 0.75
+      "p10": 0.9833
     },
     "combo": {
       "n": 8,
-      "p10": 0.6375
+      "p10": 0.8625
     },
     "type": {
       "n": 6,
-      "p10": 0.65
+      "p10": 1.0
     }
   },
   "per_query": [
@@ -35,181 +35,181 @@
       "qid": "color_black",
       "query": "black shoes",
       "group": "color",
-      "pool_judged": 10,
-      "hits": 8,
-      "p10": 0.8,
-      "unjudged": 2
+      "pool_judged": 12,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "color_blue",
       "query": "blue shoes",
       "group": "color",
-      "pool_judged": 10,
-      "hits": 5,
-      "p10": 0.5,
-      "unjudged": 4
+      "pool_judged": 14,
+      "hits": 9,
+      "p10": 0.9,
+      "unjudged": 0
     },
     {
       "qid": "color_brown",
       "query": "brown shoes",
       "group": "color",
-      "pool_judged": 10,
-      "hits": 9,
-      "p10": 0.9,
-      "unjudged": 1
+      "pool_judged": 11,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "color_white",
       "query": "white shoes",
       "group": "color",
-      "pool_judged": 10,
-      "hits": 8,
-      "p10": 0.8,
-      "unjudged": 2
+      "pool_judged": 12,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "color_red",
       "query": "red shoes",
       "group": "color",
-      "pool_judged": 10,
-      "hits": 7,
-      "p10": 0.7,
-      "unjudged": 3
+      "pool_judged": 13,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "color_silver",
       "query": "silver shoes",
       "group": "color",
-      "pool_judged": 10,
-      "hits": 8,
-      "p10": 0.8,
-      "unjudged": 2
+      "pool_judged": 12,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "type_casual_shoes",
       "query": "casual shoes",
       "group": "type",
-      "pool_judged": 10,
-      "hits": 4,
-      "p10": 0.4,
-      "unjudged": 6
+      "pool_judged": 16,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "type_heels",
       "query": "heels",
       "group": "type",
-      "pool_judged": 10,
-      "hits": 6,
-      "p10": 0.6,
-      "unjudged": 4
+      "pool_judged": 14,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "type_sandals",
       "query": "sandals",
       "group": "type",
-      "pool_judged": 10,
-      "hits": 5,
-      "p10": 0.5,
-      "unjudged": 5
+      "pool_judged": 15,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "type_formal_shoes",
       "query": "formal shoes",
       "group": "type",
-      "pool_judged": 10,
-      "hits": 9,
-      "p10": 0.9,
-      "unjudged": 1
+      "pool_judged": 11,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "type_flip_flops_men",
       "query": "flip flops for men",
       "group": "type",
-      "pool_judged": 10,
-      "hits": 7,
-      "p10": 0.7,
-      "unjudged": 3
+      "pool_judged": 13,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "type_sports_shoes_women",
       "query": "sports shoes for women",
       "group": "type",
-      "pool_judged": 10,
-      "hits": 8,
-      "p10": 0.8,
-      "unjudged": 2
+      "pool_judged": 12,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "combo_white_sports_shoes",
       "query": "white sports shoes",
       "group": "combo",
-      "pool_judged": 10,
-      "hits": 7,
-      "p10": 0.7,
-      "unjudged": 3
+      "pool_judged": 13,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "combo_silver_sports_shoes",
       "query": "silver sports shoes",
       "group": "combo",
-      "pool_judged": 10,
-      "hits": 7,
-      "p10": 0.7,
-      "unjudged": 3
+      "pool_judged": 13,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "combo_khaki_casual_shoes",
       "query": "khaki casual shoes",
       "group": "combo",
-      "pool_judged": 10,
-      "hits": 3,
-      "p10": 0.3,
-      "unjudged": 2
+      "pool_judged": 12,
+      "hits": 5,
+      "p10": 0.5,
+      "unjudged": 0
     },
     {
       "qid": "combo_olive_casual_shoes",
       "query": "olive casual shoes",
       "group": "combo",
-      "pool_judged": 10,
-      "hits": 9,
-      "p10": 0.9,
-      "unjudged": 1
+      "pool_judged": 11,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     },
     {
       "qid": "combo_beige_casual_shoes",
       "query": "beige casual shoes",
       "group": "combo",
-      "pool_judged": 10,
-      "hits": 7,
-      "p10": 0.7,
-      "unjudged": 1
+      "pool_judged": 11,
+      "hits": 8,
+      "p10": 0.8,
+      "unjudged": 0
     },
     {
       "qid": "combo_grey_sports_shoes",
       "query": "grey sports shoes",
       "group": "combo",
-      "pool_judged": 10,
-      "hits": 6,
-      "p10": 0.6,
-      "unjudged": 4
+      "pool_judged": 14,
+      "hits": 9,
+      "p10": 0.9,
+      "unjudged": 0
     },
     {
       "qid": "combo_bronze_heels",
       "query": "bronze heels",
       "group": "combo",
-      "pool_judged": 10,
-      "hits": 5,
-      "p10": 0.5,
-      "unjudged": 2
+      "pool_judged": 12,
+      "hits": 7,
+      "p10": 0.7,
+      "unjudged": 0
     },
     {
       "qid": "combo_red_casual_shoes",
       "query": "red casual shoes",
       "group": "combo",
-      "pool_judged": 10,
-      "hits": 7,
-      "p10": 0.7,
-      "unjudged": 3
+      "pool_judged": 13,
+      "hits": 10,
+      "p10": 1.0,
+      "unjudged": 0
     }
   ]
 }

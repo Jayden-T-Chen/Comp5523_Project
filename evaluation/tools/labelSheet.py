@@ -58,7 +58,10 @@ PAGE = """<!doctype html>
 <div id="content"></div>
 <script>
 const DATA = __DATA__;
-const decisions = {};
+const STORE = 'labelSheet.decisions';
+let decisions = {};
+try { decisions = JSON.parse(localStorage.getItem(STORE) || '{}') || {}; } catch (e) { decisions = {}; }
+function save(){ try { localStorage.setItem(STORE, JSON.stringify(decisions)); } catch (e) {} }
 let order = [], pos = 0;
 
 function render(){
@@ -103,13 +106,14 @@ function mark(){
 function update(){
   const done = Object.keys(decisions).length;
   document.getElementById('progress').textContent =
-    done + ' / ' + order.length + ' decided';
+    done + ' / ' + order.length + ' decided, kept in this browser';
 }
 
 function set(value){
   const key = order[pos];
   if (!key) return;
   if (value === null) delete decisions[key]; else decisions[key] = value;
+  save();
   paint();
   if (value !== null && pos < order.length - 1) pos++;
   mark();

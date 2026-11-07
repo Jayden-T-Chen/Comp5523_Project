@@ -1,5 +1,5 @@
 {
-  "note": "Zero-shot attribute table accuracy against the catalogue fields, the size of the two fused terms, and query latency; see docs/projectReport.md 3.3, 4.4, 4.5 and 7.2",
+  "note": "Zero-shot attribute table accuracy against the catalogue fields, the size of the two fused terms, and query latency; see docs/projectReport.md 4.3, 4.4 and 6.4",
   "device": "mps",
   "gallery": 1000,
   "n_queries_timed": 60,
@@ -80,5 +80,50 @@
     "gallery_reencode_once_s": 41.0,
     "cold_start_s": 31.2,
     "feature_cache_hit": true
+  },
+  "title_terms": {
+    "n_titles": 1000,
+    "with_any_term": 48,
+    "by_kind": {
+      "material": 33,
+      "toe": 8,
+      "lace": 1,
+      "closure": 7
+    },
+    "terms": {
+      "material": [
+        "leather",
+        "suede",
+        "canvas",
+        "mesh",
+        "knit",
+        "patent",
+        "nubuck",
+        "synthetic",
+        "rubber",
+        "eva",
+        "textile",
+        "fabric",
+        "jute",
+        "cork",
+        "denim",
+        "velvet",
+        "pu "
+      ],
+      "toe": [
+        "toe"
+      ],
+      "lace": [
+        "lace"
+      ],
+      "closure": [
+        "buckle",
+        "zip",
+        "velcro",
+        "clasp",
+        "slip-on",
+        "strap"
+      ]
+    }
   }
 }
