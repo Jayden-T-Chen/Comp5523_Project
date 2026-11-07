@@ -13,19 +13,16 @@ The gallery ships as 480x640 JPEGs; the figure downsamples them to 200x267 per
 thumb with LANCZOS and saves at 300 dpi - a larger canvas for slides without
 blowing up the file size.
 
-Usage:
-  python evaluation/tools/renderFailureCases.py
+Reached through `python main.py figure`.
 """
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "retrieval"))
 
 META_PATH = ROOT / "data" / "metadata.csv"
 RESULTS_DIR = ROOT / "results"
@@ -93,9 +90,8 @@ def thumb(path: Path) -> Image.Image:
     return Image.open(path).convert("RGB").resize((TH_W, TH_H), Image.LANCZOS)
 
 
-def render() -> Path:
-    import clipCore
-    import rerank
+def render(out_path: Path = OUT_PATH) -> Path:
+    from retrieval import clipCore, rerank
 
     base_res, rr_res = load_results()
     rows, paths = clipCore.load_rows()
@@ -177,10 +173,14 @@ def render() -> Path:
               "problem with the ranking problem.",
               fill=(140, 140, 140), font=f_note)
 
-    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    canvas.save(OUT_PATH, dpi=(300, 300))
-    return OUT_PATH
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    canvas.save(out_path, dpi=(300, 300))
+    return out_path
 
 
-if __name__ == "__main__":
-    print(render())
+def add_args(sub) -> None:
+    sub.add_argument("--out", type=Path, default=OUT_PATH)
+
+
+def main(args) -> None:
+    print(render(args.out))

@@ -5,12 +5,12 @@
   "topk": 10,
   "queries_file": "evaluation/sets/queries.json",
   "rerank_depth": 100,
-  "beta": 0.1,
   "parser": {
     "mask_short_matches": false,
     "color_family_weight": 1.0,
     "type_family_weight": 1.0
   },
+  "beta": 0.1,
   "n_queries": 60,
   "overall": {
     "ap50": 0.3946,

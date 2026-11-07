@@ -18,8 +18,12 @@ data/*
 **/image_features.pt
 *.npy
 
-# Generated figures (rebuild with evaluation/tools/renderFailureCases.py)
-evaluation/montages/
+# The failure figure ships with the repo; anything else rendered locally does not.
+evaluation/montages/*
+!evaluation/montages/failureCases.png
+
+# Labelling sheet is generated on demand (python main.py label-sheet)
+evaluation/sets/labelSheet.html
 
 # Secrets — tokens live in ~/.kaggle, never in the repo
 kaggle.json

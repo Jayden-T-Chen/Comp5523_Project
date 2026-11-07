@@ -3,11 +3,10 @@
 **COMP5523 Computer Vision — Group Project, 2026/27 Semester 1**
 Demonstration: 18 November 2026, TU101 · Report deadline: 25 November 2026
 
-> Working document. It holds the full prose for the 8-page report and the 7-minute
-> presentation, aligned with the two course documents (*Group Project Specification*
-> and *Project Introduction*, slides 3–17). Figures are produced by this repository;
-> every number can be regenerated from `results/*.json`. Sections 0 and 9–11 are
-> internal working material and do not belong in the submitted PDF.
+> Working document. Sections 1–8 plus the references are the text of the 8-page report;
+> sections 0 and 9–11 are internal working material and stay out of the submitted PDF.
+> Every number below is archived in `results/` and can be regenerated with the commands in
+> Appendix A.
 
 ---
 
@@ -17,7 +16,7 @@ Demonstration: 18 November 2026, TU101 · Report deadline: 25 November 2026
 | --- | --- | --- |
 | Build a text-to-image retrieval system for a domain of your choice | §1, §3–§4 | 1,000-image footwear gallery; one text box, one ranked list |
 | Input: a natural-language query; output: a ranked list of relevant images | §4.1, §4.6 | CLI and Gradio; images with cosine and attribute scores |
-| Define relevance and explain how the system measures it | §5.1–§5.3 | Metadata oracle, 200 human judgements, three metrics |
+| Define relevance and explain how the system measures it | §5.1–§5.3 | Metadata labels, 200 human judgements, three metrics, and the limit of each (§6.1, §6.5) |
 | Explain who will use it and why | §1.1 | Shoppers who know appearance but not SKUs; catalogue operators |
 | Cross-modal representation | §4.1 | Frozen CLIP ViT-B/32, 512-d, L2-normalised |
 | Image descriptions | §2, §4.1 | Direct image encoding; captioning adds a lossy layer |
@@ -25,28 +24,29 @@ Demonstration: 18 November 2026, TU101 · Report deadline: 25 November 2026
 | Domain adaptation | §4.2–§4.4 | Query parsing and zero-shot attribute re-ranking |
 | Re-ranking | §4.4 | `cos + β·Π(weighted P)` over the top-100 |
 | Query understanding | §4.2 | Three slots, alias tables, longest-phrase masking, family weights |
-| User interface | §4.6 | Gradio page with a baseline / rerank switch |
-| Custom test set, human annotation, metrics, protocol, failure analysis | §5–§6 | 60 queries, 200 labelled cells, mAP@50 / P@10 / R@10, paired bootstrap, five cases |
-| Efficiency evaluation (optional) | §7.2 | Not benchmarked; stated as a limitation |
+| User interface | §4.6 | Gradio page with a baseline / re-rank switch |
+| Custom test set, human annotation, metrics, protocol, failure analysis | §5–§6 | 60 queries, 200 labelled cells (54 still open), mAP@50 / P@10 / R@10, paired bootstrap, five cases |
+| Efficiency evaluation (optional) | §4.5, §7.2 | Measured: 37 ms per query for both arms, tables 1.8 s once, gallery 41 s once (`results/attribute_probe.json`) |
 | 7-minute demonstration and 8-page report | §10–§11 | Timing plan, page budget, APA, disclosure, contributions |
 
-The six marking dimensions (Appropriateness, Soundness, Excitement, Presentation,
-Writing, Peer Review, 2.5% each) are mapped to evidence in §9.
+The six marking dimensions (Appropriateness, Soundness, Excitement, Presentation, Writing,
+Peer Review, 2.5% each) are mapped to evidence in §9.
 
 ---
 
 ## Abstract
 
-We study text-to-image retrieval in a single product domain: footwear. A frozen CLIP
-ViT-B/32 model encodes a 1,000-image catalogue and ranks images by cosine similarity to
-a natural-language query. On top of this baseline we add a query parser and a zero-shot
-attribute re-ranker: the parser turns a shopper phrase into colour, type and gender
-constraints; CLIP text prompts turn the same attributes into per-image probability
-tables; and a weighted product of those probabilities is added to the cosine score. On
-60 queries, mAP@50 rises from 0.348 to 0.408 (+17.2%, paired bootstrap 95% CI +0.041 to
-+0.082) and P@10 from 0.582 to 0.628 (+0.047, CI +0.015 to +0.080). A six-template prompt
-ensemble, often treated as a free improvement, loses 5.1% on the same data. We calibrate
-automatic labels against 200 human judgements and analyse five failure modes.
+We study text-to-image retrieval in one product domain, footwear. A frozen CLIP ViT-B/32 encodes
+a 1,000-image catalogue and ranks images by cosine similarity to a shopper's phrase. On top of
+that baseline we add a query parser and a zero-shot attribute re-ranker: the parser reads a phrase
+into colour, type and gender constraints from the catalogue vocabulary, CLIP text prompts turn the
+same attributes into per-image probability tables, and a weighted product of those probabilities is
+added to the cosine score. Over 60 queries mAP@50 rises from 0.348 to 0.408 (+17.2%, paired
+bootstrap 95% CI +0.041 to +0.082) and P@10 from 0.582 to 0.628 (+0.047, CI +0.015 to +0.080). Two
+diagnostic arms bound that gain: the attribute term alone reaches the same mAP, and a lookup on the
+ground-truth labels reaches 1.000, so the automatic oracle is saturated by construction. A
+six-template prompt ensemble loses 5.1%. We calibrate the automatic labels against 200 human
+judgements, measure query latency, and diagnose five failures.
 
 ---
 
@@ -54,64 +54,52 @@ automatic labels against 200 human judgements and analyse five failure modes.
 
 ### 1.1 Task and users
 
-Text-to-image retrieval asks for images that match a free-form description. In product
-catalogues the task is practical: shoppers can describe appearance ("grey casual shoes",
-"silver sports shoes") but rarely know model names or stock codes. Metadata search is
-the usual alternative, yet catalogue naming is inconsistent across colours and styles,
-and many visual properties are never tagged. Retrieval that works directly on pixels
-complements metadata search and supports visual browsing.
+Text-to-image retrieval returns images that match a free-form description. In a product catalogue
+the task is practical: a shopper can describe appearance — grey casual shoes, silver sports shoes —
+but rarely knows a model name or a stock code, and keyword search over catalogue fields depends on
+naming that varies between brands and leaves many visual properties untagged.
 
-We choose footwear because the domain has attributes that are visually meaningful and
-comparable across products: eight article types, forty colour values, and a colour space
-in which neighbours (grey, silver, charcoal; tan, beige, khaki) are easy for a person to
-tell apart and hard for a text encoder. That gap is where a domain-specific method can
-demonstrate value.
-
-Two groups use the system. Shoppers search by appearance when they cannot name a product;
-catalogue operators use attribute search to assemble or check collections. Both need the
-head of the ranking to be right, which is why we report P@10 alongside mAP@50.
+Footwear suits a course-scale study because its attributes are visually meaningful and comparable
+across products: eight article types, forty colour values, and a colour space where neighbours such
+as grey, silver and charcoal are easy for a person to separate and hard for a text encoder. Two
+groups use the system. Shoppers search by appearance when they cannot name a product; catalogue
+operators assemble or check a collection. Both look at the top of the list first, which is why we
+report P@10 alongside mAP@50.
 
 ### 1.2 What the system does
 
 Given a query, the system returns a ranked list of gallery images, each with its cosine
-similarity and, for the re-ranked list, an attribute agreement score. Two methods share
-the gallery, the image features and the truncation: a frozen-CLIP cosine baseline, and
-attribute-verified re-ranking. A Gradio page switches between them on the same query, so
-the contribution is visible in the demonstration rather than asserted in text.
+similarity and, in the re-ranked list, an attribute agreement score. Every arm we compare shares
+the gallery, the image features and the truncation. The Gradio page switches between baseline and
+re-rank on the same query, so the difference is visible during the demonstration.
 
 ### 1.3 Contributions
 
-1. A reproducible benchmark for a 1,000-image footwear gallery: 60 queries across three
-   difficulty groups, 200 human relevance judgements, two widened label variants and a
-   30-query frozen held-out set.
-2. A training-free domain adaptation method: query parsing plus zero-shot attribute
-   re-ranking, with each design choice isolated by an ablation.
-3. A statistically tested +17.2% mAP@50 gain, a negative result for prompt ensembling,
-   and a decomposition showing how much of the gain comes from a deeper candidate pool.
-4. A failure taxonomy with visual evidence, and a calibration of automatic labels against
-   human judgement that separates label noise from model error.
+1. A reproducible benchmark around a 1,000-image footwear gallery: 60 queries in three difficulty
+   groups, 200 human relevance judgements, two widened label variants and a 30-query frozen held-out
+   set, all shipped in the repository.
+2. A training-free adaptation method — query parsing plus zero-shot attribute re-ranking — with each
+   design choice isolated by an ablation.
+3. A decomposition of the +17.2% mAP@50 gain into candidate depth, attribute ordering and cosine
+   tie-breaking, with two diagnostic arms that bound what the automatic labels measure.
+4. A negative result for prompt ensembling, four diagnosed failures with visual evidence, a
+   calibration of automatic labels against human judgement, and measured latency.
 
 ---
 
 ## 2. Related work
 
-CLIP (Radford et al., 2021) learns a shared image-text space by contrastive pretraining on
-400 million pairs and transfers to new tasks through prompt text. We use the open-source
-reimplementation open_clip (Ilharco et al., 2021) with the original OpenAI weights and keep
-the encoders frozen: with one thousand images there are no domain image-text pairs to
-fine-tune on, and a frozen encoder makes the contribution of the adaptation layer
-measurable.
+CLIP (Radford et al., 2021) learns a shared image-text space by contrastive pretraining on 400
+million pairs and transfers through prompt text. We use the open-source reimplementation open_clip
+(Ilharco et al., 2021) with the original OpenAI weights and keep the encoders frozen: a thousand
+images give no domain pairs to fine-tune on, and a frozen encoder makes the adaptation layer's
+contribution measurable.
 
-Re-ranking is standard in retrieval: a cheap first stage proposes candidates and a more
-expensive second stage reorders them (Nogueira & Cho, 2019). Our second stage is a
-zero-shot attribute classifier rather than a trained cross-encoder, so it needs no
-labelled pairs. Evaluation follows standard information-retrieval practice (Manning et
-al., 2008), with confidence intervals from a paired bootstrap (Efron & Tibshirani, 1993).
-
-The gallery comes from the Fashion Product Images dataset (Aggarwal, 2019), which pairs
-catalogue photographs with article type, colour and gender. Its product-shot style keeps
-the visual domain narrow, which suits a course-scale study: differences between methods
-come from the method, not from background clutter.
+Two-stage retrieval is standard — a cheap first pass proposes candidates and a costlier second pass
+reorders them (Nogueira & Cho, 2019). Our second stage is a zero-shot attribute classifier, so it
+needs no labelled pairs. Evaluation follows standard practice (Manning et al., 2008) with confidence
+intervals from a paired bootstrap (Efron & Tibshirani, 1993). The gallery comes from the Fashion
+Product Images dataset (Aggarwal, 2019), whose product-shot style keeps the visual domain narrow.
 
 ---
 
@@ -119,17 +107,16 @@ come from the method, not from background clutter.
 
 ### 3.1 Source and sampling
 
-The full dataset contains 44,441 images; 9,222 carry `masterCategory = Footwear`. We sample
-500 men's and 500 women's items, rotating through `baseColour` within each gender so that
-common colours contribute about fifty images each and rare colours remain as distractors.
-The gallery covers eight article types: Casual Shoes (283), Heels (237), Sports Shoes
-(162), Flip Flops (126), Flats (101), Sandals (60), Formal Shoes (21), Sports Sandals (10).
+The publisher describes 44k product images upstream; `dataset/NOTICE` records that 9,222 of them
+carry `masterCategory = Footwear`. We sample 500 men's and 500 women's items, rotating through
+`baseColour` within each gender so that common colours contribute about fifty images each and rare
+colours stay as distractors. The gallery covers eight article types: Casual Shoes (283), Heels (237),
+Sports Shoes (162), Flip Flops (126), Flats (101), Sandals (60), Formal Shoes (21), Sports Sandals (10).
 
-Source images are 1080×1440 (a few at 1800×2400), resized with Lanczos to
-**480×640, JPEG quality 90**, 22.1 MiB in total. This is more than twice CLIP's 224-pixel
-input, so the metallic highlights that separate gold, bronze and brown survive the resize.
-The gallery ships with the repository, so reviewers encode exactly the pixels used in every
-number below.
+Source images are 1080×1440, resized with Lanczos to 480×640 at JPEG quality 90, 22.1 MiB in total.
+That is more than twice CLIP's 224-pixel input, so the metallic highlights that separate gold, bronze
+and brown survive. The gallery ships with the repository, so a reviewer encodes exactly the pixels
+behind every number here.
 
 ### 3.2 Attribute schema
 
@@ -145,21 +132,22 @@ number below.
 | `display_name` | "Puma Men Basics Black Casual Shoes" | Interface caption only |
 
 `dataset/manifest.csv` records the 1,000 sampled ids and their attributes; `dataset/NOTICE`
-records provenance, licence (MIT) and the resize rule. The metadata is the source of the
-attribute vocabulary, the automatic relevance labels and the interface captions.
+records provenance, licence (MIT) and the resize rule. The same fields supply the attribute
+vocabulary, the automatic relevance labels and the interface captions, a coincidence we
+return to in §5.2 and §6.1.
 
 ### 3.3 Caching
 
-Image features are cached in `data/image_features.pt` under a signature of image count,
-newest modification time and total bytes. Replacing any image invalidates the cache, so
-cached features always match the gallery that produced them.
+Image features are cached in `data/image_features.pt` under a signature of image count, newest
+modification time and total bytes, so replacing any image invalidates the cache and cached features
+always match the gallery that produced them. A full re-encode takes 41 s on the 8 GB M1 laptop used
+for every number here, which `main.py probe` measures once per run.
 
 ### 3.4 Gallery size
 
-The 1,000-image gallery gives each query between 10 and 283 relevant images (mean 54),
-enough for a stable P@10 and a meaningful mAP@50. It also keeps a full re-encode near 15
-seconds on an Apple M1, so the gallery and every number in this report can be rebuilt on a
-laptop. All claims are scoped to this gallery.
+Each query has between 10 and 283 relevant images (mean 54), enough for a stable P@10 and a
+meaningful mAP@50, and the size keeps the study runnable on a laptop. All claims are scoped to this
+gallery.
 
 ---
 
@@ -167,17 +155,19 @@ laptop. All claims are scoped to this gallery.
 
 ### 4.1 Baseline: frozen CLIP cosine
 
-Images are encoded once with ViT-B/32 (224-pixel centre crop), L2-normalised to 512
-dimensions, and cached. A query is encoded with the same text encoder, without templates,
-and scored by the dot product, which equals cosine similarity for unit vectors. The
-baseline returns the top 50 images. Queries are encoded as written, with no template; §6.8
-quantifies how templates affect the score.
+Images are encoded once with ViT-B/32 (224-pixel centre crop), L2-normalised to 512 dimensions and
+cached. A query is encoded with the same text encoder, as written, and scored by the dot product,
+which is cosine similarity for unit vectors. The baseline returns the top 50; §6.8 quantifies what
+happens when templates are added to the query text. The model is built by open_clip from its default
+`ViT-B-32` config with the `openai` weights, in which the text tower uses ordinary GELU, while
+OpenAI trained that checkpoint with QuickGELU; the library prints a mismatch warning on every load,
+and §7.3 measures how far the deviation reaches.
 
 ### 4.2 Query understanding
 
-The parser fills three slots from vocabulary derived from the metadata: 36 colour words
-covering all 40 colour values, 30 type phrases covering the eight article types and their
-synonyms, and 9 gender words. Each alias maps to a list of catalogue values:
+The parser fills three slots from vocabulary derived from the metadata: 36 colour words covering all
+40 colour values, 30 type phrases for the eight article types and their synonyms, and 9 gender words.
+Each alias maps to a list of catalogue values.
 
 | Query | Colour (weight) | Type (weight) | Gender |
 | --- | --- | --- | --- |
@@ -186,35 +176,27 @@ synonyms, and 9 gender words. Each alias maps to a list of catalogue values:
 | `sneakers` | — | Sports Shoes 1.0, Casual Shoes 1.0 | — |
 | `sports sandals for women` | — | Sports Sandals 1.0 | Women |
 
-Three design rules matter for scoring:
+Three rules turn a parse into a score. Matches are sorted by length and an alias contained in an
+accepted longer phrase is dropped, so "sports sandals" parses as Sports Sandals and no longer fires
+Sports Shoes and Sandals as well. Within a colour alias the first value is the word's own catalogue
+value at weight 1.0 and the rest are the family it is confused with at 0.5: a catalogue gives one
+colour per image while CLIP places silver, grey and charcoal close together, so full weight pulls
+wrong-coloured images up and zero weight loses images a person would accept for "grey". Type synonyms
+keep weight 1.0, since "sneakers" names two catalogue types; gender stays unconstrained when the query
+names neither or both.
 
-- **Longest phrase wins.** Matches are sorted by length; any alias contained in an accepted
-  longer phrase is dropped. "Sports sandals" therefore parses as Sports Sandals and no
-  longer fires "sports" (Sports Shoes) and "sandals" (Sandals).
-- **Colour weights separate literal and family values.** The first value of an alias list
-  is the word's own catalogue value and carries weight 1.0; the remaining values are the
-  colour family it is often confused with and carry 0.5. A catalogue assigns one colour
-  label per image, while CLIP places silver, grey and charcoal close together. Giving
-  family values full weight pulls wrong-coloured images to the top; giving them zero weight
-  discards images a person would accept for "grey". The half weight keeps the literal value
-  dominant while allowing family credit. Section 6.3 shows the 0.25 alternative.
-- **Type synonyms carry 1.0.** "Sneakers" is a genuine synonym for two catalogue types
-  (Sports Shoes and Casual Shoes), and both should count fully; a fractional weight would
-  penalise one arbitrarily. Gender is a single value, and is left unconstrained when the
-  query names neither gender or names both.
-
-The parser never rewrites the query text. The text encoder still sees the shopper's words;
-the parse only supplies weights to the second stage, which avoids the text-side dilution
-measured for prompt templates.
+The parser never rewrites the query text: the encoder still sees the shopper's words and the parse
+only supplies weights to the second stage.
 
 ### 4.3 Zero-shot attribute tables
 
-For each slot we encode one prompt per catalogue value — "a photo of a {colour} shoe",
-"a photo of {type}", "a photo of a shoe for {gender}" — and apply a softmax over the values
-of that slot with CLIP's logit scale of 100. The result is a distribution per image and
-slot: 40 colours, 8 types, 2 genders. The tables are built once per process (50 text
-encodes) and their vocabulary comes from the metadata value set, not from the evaluation
-labels; the relevance labels never enter scoring.
+For each slot we encode one prompt per catalogue value — "a photo of a {colour} shoe", "a photo of
+{type}", "a photo of a shoe for {gender}" — and apply a softmax over that slot's values with CLIP's
+logit scale of 100. The result is a distribution per image and slot (40 colours, 8 types, 2 genders),
+built once per process from 50 text encodes. These tables are weak classifiers: their argmax agrees
+with the catalogue field for 36.9% of images on colour, 39.5% on type and 85.8% on gender
+(`results/attribute_probe.json`). The fusion never asks for an argmax; it reads the probability of
+the values a query named, which acts as a soft vote over the candidate list (§7.1).
 
 ### 4.4 Fusion scoring
 
@@ -224,46 +206,44 @@ For a query parsed into slots *a* with values *v* and weights *w*:
 score(q, x) = cos(q, x) + β · Π_a ( Σ_{v∈a} w_v · P_a(v | x) )
 ```
 
-The product across slots expresses AND semantics: a query naming a colour and a type wants
-both at once, and a low probability in either slot suppresses the bonus. The sum inside a
-slot lets a family value contribute in proportion to its weight.
+The product across slots gives AND semantics: a query that names a colour and a type wants both, and
+a low probability in either slot suppresses the bonus. The sum inside a slot lets a family value
+contribute in proportion to its weight.
 
-The two weights interact with the scale of the two terms. Inside the top-100 candidates,
-cosine spans roughly 0.04. The agreement term is a product of two or three probabilities;
-on representative queries its maximum over the candidate list is 0.24–0.36, so with
-β = 0.1 the bonus never exceeds 0.024–0.036 — the same order as the cosine differences it
-has to resolve. This is why β = 0.1 can reorder near-ties without letting attribute
-probabilities override visual similarity. Raising β to 0.2–1.5 lifts mAP to 0.413–0.416
-but degrades grey and beige (Section 6.4); the aggregate gain comes from failures we can
-see, which is a trade we decline.
-
-The candidate pool is a separate constant from the metric truncation. With pure cosine,
-retrieving 100 and truncating to 50 is identical to retrieving 50, so baseline and
-re-ranking see the same candidate range and the same cutoff; re-ranking changes the order
-and can promote images ranked 51–100. Section 6.4 reports pools of 50, 100 and 200.
+The two terms have to be on comparable scales for β to mean anything, so `main.py probe` records both
+inside the shipped top-100 pool, per query group. Cosine spans 0.0249 to 0.0445 across a pool
+depending on the group, while the agreement term peaks at 0.814 on type queries, 0.639 on colour
+queries and 0.315 when a query names both slots, the product across slots being what pulls the
+two-slot peak down; over the 60 queries that peak runs from 0.059 to 0.978. At β = 0.1 the median
+peak bonus is therefore 0.0315 on a two-slot query and 0.0814 on a type-only one, the same size as the
+whole cosine range of the pool it re-sorts, so a candidate outside the cosine top-50 can be pulled into
+the head — which is what the pool-depth rows of §6.4 measure. The candidate pool is separate from the
+metric truncation: under pure cosine, retrieving 100 and cutting to 50 gives the same list as
+retrieving 50, so re-ranking changes only the order.
 
 ### 4.5 Algorithm and cost
 
-1. **Offline.** Encode the 1,000 gallery images (about 15 s on an Apple M1), L2-normalise,
-   cache. Build the three attribute tables once per process.
-2. **Query.** Encode the query text once.
-3. **Coarse pass.** One matrix-vector product over 1,000 cached embeddings; keep the top 100.
-4. **Attribute pass.** For each candidate, look up the probabilities of the named values,
-   weight and multiply across slots; add β times the result to the cosine.
-5. **Return.** Sort and return 50; the interface shows the first 10 with both scores.
+Offline, encode the 1,000 gallery images, normalise, cache, and build the three attribute tables once.
+Per query, encode the text once, take one matrix-vector product over the cached embeddings, keep the
+top 100, weight and multiply the named values' probabilities across slots, add β times the result to
+the cosine, and return 50. The coarse pass is linear in gallery size, the re-rank pass touches 100
+candidates and at most three slots, and image features occupy about 2 MB.
 
-The coarse pass is linear in gallery size (1,000); the rerank pass touches 100 candidates
-and at most three slots. Image features occupy about 2 MB. Query latency is dominated by
-the single text encode; we did not run a formal latency benchmark, which is listed as a
-limitation in §7.2.
+`main.py probe` times all of it on an 8 GB Apple M1 laptop with the feature cache warm and the
+60 queries run eight times over: 37.0 ms per query for the baseline and 37.9 ms for the re-ranked arm,
+with the individual rounds of the two arms spread over 24.9–46.1 ms and 29.1–44.5 ms. The two
+distributions sit on top of each other, so re-ranking adds no measurable latency at query time. What
+it costs is offline: 1.8 s to build the three tables and 41.0 s to encode the gallery when the cache
+is empty, and a cold start that answers the first query 31.2 s after the process begins
+(`results/attribute_probe.json`). All four numbers are from one machine, and the round-to-round spread
+above is the load of an ordinary laptop, not a property of the method.
 
 ### 4.6 Interfaces
 
-`searchCli.py` prints the ranking with cosine and attribute scores for quick inspection and
-for reproducing individual cases. `searchWeb.py` is a Gradio page with a query box, a
-Top-K slider and a method switch; it shows the parsed attributes above the image grid and
-each image's cosine and attribute score. Both call the same functions as the evaluation, so
-the demonstration and the reported numbers share one code path.
+`main.py search` prints a ranking with cosine and attribute scores for inspecting individual cases.
+`main.py web` opens a Gradio page with a query box, a Top-K slider and a method switch, showing the
+parsed attributes above the image grid and both scores under each image. Both call the same functions
+as the evaluation, so the demonstration and the reported numbers share one code path.
 
 ---
 
@@ -273,101 +253,115 @@ the demonstration and the reported numbers share one code path.
 
 | Set | Items | Labels | Role |
 | --- | --- | --- | --- |
-| `queries.json` | 60: colour 20, type 18, combo 22 | Exact metadata match on the named attributes | Main oracle for method comparison |
-| `judgements.json` | 20 queries × 10 images = 200 cells | Human 0/1 on the baseline top-10 | Calibrate the absolute level of auto labels |
-| `queries_family.json` | Same 60 queries | Colour families widened (e.g. Brown←Tan/Beige) | Test sensitivity to the colour definition |
-| `queries_sandal.json` | Same 60 queries | Sandals and Sports Sandals merged | Test sensitivity to taxonomy |
-| `queries_heldout.json` | 30: 20 paraphrases, 10 typos | Exact metadata match, frozen | Generalisation check outside development |
+| `queries.json` | 60: colour 20, type 18, combo 22 | Exact metadata match on the named attributes | Main comparison |
+| `judgements.json` | 20 queries × 10 images = 200 cells | Human 0/1 on the baseline top-10 | Calibrate the auto labels |
+| `queries_family.json` | Same 60 queries | Colour families widened (e.g. Brown←Tan/Beige) | Sensitivity to the colour definition |
+| `queries_sandal.json` | Same 60 queries | Sandals and Sports Sandals merged | Sensitivity to taxonomy |
+| `queries_heldout.json` | 30: 20 paraphrases, 10 typos | Exact metadata match, frozen | Generalisation check |
 
-The 60 main queries are built to separate three difficulties. The twenty colour queries use
-the twenty most frequent colours, one query each, covering both common colours and rare
-distractors. The eighteen type queries cover every article type and add ten type-and-gender
-queries that have at least twenty relevant images, which exercises both the type vocabulary
-and the gender slot. The twenty-two combo queries pair a colour with a type and require at
-least twelve relevant images; they reflect realistic shopper phrasing and test the AND
-semantics that the product implements. A relevant set ranges from 10 to 283 images (3,220
-in total). Because R@10 divides by the size of the relevant set, its ceiling on this
-gallery is 0.368; we report it as a diagnostic and use mAP@50 as the primary metric.
-
-The human subset draws six colour, six type and eight combo queries (200 cells), a size one
-person can judge in a single sitting while covering all three groups. The held-out set was
-frozen after the method was fixed: twenty paraphrases ("kicks", "trainers", "ballerinas",
-"slippers", "oxfords") test vocabulary generalisation, and ten misspellings ("blak",
-"silvr", "charcole") test parser robustness.
+The 60 main queries separate three difficulties. The twenty colour queries use the twenty most
+frequent colours, one each; the eighteen type queries cover every article type and add ten
+type-and-gender queries with at least twenty relevant images; the twenty-two combo queries pair a
+colour with a type, require at least twelve relevant images, and exercise the AND semantics the
+product implements. Relevant sets total 3,220 images and range from 10 to 283. Because R@10 divides
+by the relevant-set size its ceiling here is 0.368, so we report it as a diagnostic and use mAP@50 as
+the primary metric. The human subset draws six colour, six type and eight combo queries, a size one
+person can judge in a sitting. The held-out set was frozen once the method was fixed: twenty
+paraphrases ("kicks", "trainers", "ballerinas", "slippers", "oxfords") test vocabulary generalisation
+and ten misspellings ("blak", "silvr", "charcole") test parser robustness.
 
 ### 5.2 Relevance definitions
 
-- **Auto.** An image is relevant if its metadata matches every attribute the query names:
-  `color` equality, `articleType` equality, and `gender` equality when the query names one.
-  This covers all 60 queries and is fully reproducible, at the cost of inheriting catalogue
-  naming (a tan shoe may be labelled Beige and miss a "brown" query).
-- **Strict.** A person judged the baseline top-10 for 20 queries, by eye, with a written
-  rule: the dominant visible colour, same-hue neighbours counted together, type judged by
-  visible design, gender rejected only when clearly opposite. Re-checking the twelve least
-  certain cells changed one label and filled six that had been left blank.
-- **Family and Sandal.** The same queries with the colour definition widened to families,
-  or the two sandal types merged. These variants change what counts as correct; they test
-  whether a conclusion depends on a strict label definition.
-- **Held-out.** Exact metadata labels, frozen and never used for tuning.
+**Auto.** An image is relevant when its metadata matches every attribute the query names: `color`,
+`articleType`, and `gender` when the query names one. It covers all 60 queries and is fully
+reproducible.
 
-The scoring function sees none of these labels: it compares image and text vectors and
-metadata vocabulary. Labels are used only by the evaluation scripts, which keeps the test
-set independent of the method.
+**Strict.** A person judged the baseline top-10 for 20 queries by eye under a written rule: dominant
+visible colour, same-hue neighbours counted together, type by visible design, gender rejected only
+when clearly opposite. Re-checking the twelve least certain cells changed one label and filled six
+blanks.
+
+**Family and Sandal.** The same queries with the colour definition widened to families, or the two
+sandal types merged; these change what counts as correct.
+
+**Held-out.** Exact metadata labels, frozen and never used for tuning.
+
+The scoring functions never read these labels; they compare vectors and consult the metadata
+vocabulary. The auto labels are still not independent of the method's inputs: the alias tables and the
+attribute tables come from `articleType`, `color` and `gender`, the same three fields the auto labels
+use, so an auto score measures agreement with the catalogue rather than with a shopper, and it can be
+saturated by a lookup on those fields, which the `metadata` arm in §6.1 quantifies. The human
+judgements, the family variant and the sandal variant are the definitions that do not share the
+parser's source, which is why §6.5 carries as much weight as §6.1.
 
 ### 5.3 Metrics
 
-- **mAP@50** averages, over queries, the average precision of the top-50 list against the
-  relevant set. It reflects the whole ranking and is the primary metric.
-- **P@10** is the fraction of the top ten that is relevant. It reflects what a user sees
-  first and is reported alongside mAP.
-- **R@10** is the fraction of all relevant images that appear in the top ten. It depends on
-  the size of the relevant set and is reported for completeness.
+mAP@50 averages, over queries, the average precision of the top-50 list against the relevant set; it
+reflects the whole ranking and is primary. P@10 is the fraction of the top ten that is relevant and
+reflects what a user sees first. R@10 is the fraction of all relevant images in the top ten; it
+depends on relevant-set size and is reported for completeness.
 
 ### 5.4 Statistics
 
-Queries share one gallery and are correlated, so we compare methods with a paired bootstrap
-over queries: 10,000 resamples with a fixed seed, drawing each query's two scores together
-and reporting the 2.5th and 97.5th percentiles of the mean difference. We also report how
-many queries improve, worsen or stay unchanged. A confidence interval that excludes zero is
-read as a significant difference.
+Queries share one gallery and are correlated, so we compare arms with a paired bootstrap over
+queries: 10,000 resamples at a fixed seed, drawing each query's two scores together, reporting the
+2.5th and 97.5th percentiles of the mean difference, and counting how many queries improve, worsen or
+stay unchanged. An interval that excludes zero is read as significant. Every interval quoted in §6 is
+archived as JSON by `main.py compare --out` under `results/comparisons/`.
 
-### 5.5 Controls and ablations
+### 5.5 Controls
 
-All comparisons use one gallery, one set of image features, one query file and one
-truncation. We vary one factor at a time: the text side (prompt ensemble), the parser (four
-configurations), the candidate pool (50, 100, 200), the fusion weight (0.1 and 0.2–1.5),
-and the relevance definition (auto, family, sandal, strict). The held-out set is evaluated
-once, after the method is fixed.
+All comparisons use one gallery, one set of image features, one query file and one truncation, and
+vary one factor at a time: the text side (prompt ensemble), the parser (four configurations), the
+candidate pool (50, 100, 200), the fusion weight (0.1 and 0.2–1.5), the fusion form (with and
+without cosine), the relevance definition (auto, family, sandal, strict) and, in §7.3, the encoder
+activation. The held-out set is evaluated once the method is fixed, and every result file records the
+depth, β and parser constants that produced it.
 
 ---
 
 ## 6. Results
 
-### 6.1 Main comparison
+### 6.1 Five arms and the quantity each one isolates
 
-| Method | mAP@50 | P@10 | R@10 | Relative mAP |
+| Arm | mAP@50 | P@10 | R@10 | What it isolates |
 | --- | --- | --- | --- | --- |
-| Baseline (frozen CLIP cosine) | 0.3481 | 0.5817 | 0.1896 | — |
-| + prompt ensemble (6 templates) | 0.3302 | 0.5633 | 0.1855 | −5.1% |
-| + query parsing + attribute re-ranking | **0.4078** | **0.6283** | **0.2024** | **+17.2%** |
+| `baseline` — frozen CLIP cosine | 0.3481 | 0.5817 | 0.1896 | Text-image similarity alone |
+| `prompt` — six-template ensemble | 0.3302 | 0.5633 | 0.1855 | Editing the query text (−5.1%) |
+| `attr_only` — agreement ordering, cosine tie-break | 0.4086 | 0.6133 | 0.1949 | The attribute term by itself |
+| `rerank` — cosine + 0.1·agreement over top-100 | **0.4078** | **0.6283** | **0.2024** | The shipped fusion |
+| `metadata` — lookup on ground-truth attributes | 1.0000 | 1.0000 | 0.3681 | Oracle; reads the labels |
 
-Re-ranking improves mAP@50 by 0.0597 (95% CI +0.0413 to +0.0816; 49 queries better,
-11 worse, none unchanged) and P@10 by 0.0467 (CI +0.0150 to +0.0800; 28 better, 15 worse,
-17 tied). Both intervals exclude zero.
+Re-ranking improves mAP@50 over the baseline by 0.0597 (95% CI +0.0413 to +0.0816; 49 queries better,
+11 worse) and P@10 by 0.0467 (CI +0.0150 to +0.0800; 28 better, 15 worse, 17 tied). Both intervals
+exclude zero, and the comparison files behind them are archived (`results/comparisons/auto.json`).
+
+The two added arms change how we read that gain. `attr_only` orders the same 100 candidates by
+agreement alone and reaches 0.4086 mAP@50, level with the shipped fusion, while its P@10 of 0.6133
+sits below 0.6283: under automatic labels essentially all of the mAP gain comes from the attribute
+ordering, and cosine contributes at the head. The intervals agree with that split — dropping the
+cosine term leaves a P@10 gain of 0.0317 whose CI covers zero (−0.0083 to +0.0717,
+`results/comparisons/attr_only.json`), whereas keeping it gives the significant +0.0467 above. The
+`metadata` arm scores 1.000 by construction, because matching the query's ground-truth attributes
+against the catalogue fields is exactly the auto relevance rule; it is an upper bound on the oracle
+rather than a system, and it says that auto mAP measures how closely a method reproduces the
+catalogue. Together they leave an honest reading: the fusion reaches 0.408 where a catalogue lookup
+reaches 1.000, and §6.5 and §6.6 are where the ordering has to prove it is more than agreement with
+the catalogue.
 
 ### 6.2 Group analysis
 
-| Group (queries) | Baseline mAP / P@10 | Re-ranking mAP / P@10 | Δ mAP / Δ P@10 |
-| --- | --- | --- | --- |
-| Colour (20) | 0.256 / 0.580 | 0.311 / 0.655 | +0.0546 / +0.0750 |
-| Type (18) | 0.443 / 0.678 | 0.538 / 0.739 | +0.0949 / +0.0611 |
-| Combo (22) | 0.354 / 0.505 | 0.390 / 0.514 | +0.0356 / +0.0091 |
+| Group (queries) | Baseline mAP / P@10 | `attr_only` mAP / P@10 | Re-ranking mAP / P@10 | Δ mAP / Δ P@10 |
+| --- | --- | --- | --- | --- |
+| Colour (20) | 0.256 / 0.580 | 0.329 / 0.650 | 0.311 / 0.655 | +0.0546 / +0.0750 |
+| Type (18) | 0.443 / 0.678 | 0.534 / 0.733 | 0.538 / 0.739 | +0.0949 / +0.0611 |
+| Combo (22) | 0.354 / 0.505 | 0.379 / 0.482 | 0.390 / 0.514 | +0.0356 / +0.0091 |
 
-The largest mAP gain is on type queries, where eight visually distinct categories make the
-zero-shot table reliable. The largest head gain is on colour queries, where parser alignment
-matters most. Combo queries improve mainly deeper in the list: the product over two slots
-penalises candidates that are uncertain in either slot, so the head changes little. We
-report this rather than describing the method as solving multi-attribute queries.
+Type queries gain most in mAP and colour queries most at the head. Combo queries improve deeper in the
+list: the product over two slots penalises a candidate that is uncertain in either, so the head moves
+by 0.0091 and the combo column carries the smallest gain of the three groups. `attr_only` follows the
+same shape except on colour, where keeping cosine in the score costs 0.018 mAP against the
+attribute-only ordering and returns 0.005 P@10 for it.
 
 ### 6.3 Parser ablation
 
@@ -378,38 +372,35 @@ report this rather than describing the method as solving multi-attribute queries
 | + colour family at 0.5 (shipped) | **0.4078** | **0.6283** | 0.196 | 0.182 | 0.299 |
 | + colour family at 0.25 | 0.4131 | 0.6300 | 0.218 | 0.207 | 0.294 |
 
-Relative to the unweighted parser, the shipped configuration gains 0.0132 mAP (CI +0.0049 to
-+0.0224; 31 better, 10 worse, 19 tied) and 0.0350 P@10 (CI +0.0117 to +0.0617). Masking
-alone is neutral in aggregate (−0.0002) but makes the parse internally consistent, which is
-what allows the family weight to act. The 0.25 alternative gains another 0.0053 mAP while
-pushing olive and orange below their 0.5 values and widening the worst per-query regression,
+Against the unweighted parser the shipped configuration gains 0.0132 mAP (CI +0.0049 to +0.0224; 31
+better, 10 worse, 19 tied) and 0.0350 P@10 (CI +0.0117 to +0.0617;
+`results/comparisons/parser.json`). Masking alone is neutral in
+aggregate (−0.0002); its value is internal consistency, since "sports sandals" stops firing two extra
+type values and that lets a family weight act on the colour slot without noise from the type slot.
+The 0.25 alternative gains another 0.0053 mAP while pushing olive and orange below their 0.5 values,
 so we keep 0.5.
 
 ### 6.4 Candidate depth and fusion weight
 
-From `results/fusion_ablation.json` (`evaluation/tools/ablateFusion.py`: one process, one
-gallery, the shipped parser, one knob moved per row). The shipped point is pool 100, β 0.1.
+From `results/ablations/fusion_ablation.json`: one process, one gallery, the shipped parser, one knob
+moved per row. The shipped point is pool 100, β 0.1.
 
-| Candidate pool | β | mAP@50 | P@10 | Pool recall | Grey AP | Beige AP |
+| Pool | β | mAP@50 | P@10 | Pool recall | Grey AP | Beige AP |
 | --- | --- | --- | --- | --- | --- | --- |
 | 50 | 0.1 | 0.3747 | 0.6250 | 0.477 | 0.182 | 0.183 |
-| **100** | **0.1** | **0.4078** | **0.6283** | 0.655 | 0.196 | 0.182 |
+| **100** | **0.1** | **0.4078** | **0.6283** | **0.655** | 0.196 | 0.182 |
 | 200 | 0.1 | 0.4113 | 0.6283 | 0.818 | 0.214 | 0.182 |
 | 100 | 0.2 | 0.4134 | 0.6350 | 0.655 | 0.188 | 0.176 |
 | 100 | 0.4 | 0.4142 | 0.6333 | 0.655 | 0.182 | 0.172 |
 | 100 | 0.8 | 0.4136 | 0.6283 | 0.655 | 0.188 | 0.166 |
 | 100 | 1.5 | 0.4132 | 0.6250 | 0.655 | 0.184 | 0.165 |
 
-The 0.0597 total decomposes into +0.0266 from attribute re-ranking on the same top-50 pool
-(0.3481 → 0.3747) and +0.0331 from deepening the pool to 100 (0.3747 → 0.4078). P@10 barely
-moves across depths (0.625 → 0.628), which places the head gain in the re-ranking itself
-rather than in the deeper pool; a pool of 200 adds 0.0035, inside the noise, at twice the
-scoring cost.
-
-Stronger fusion is the same trade in reverse: β = 0.2–1.5 buys up to 0.0064 mAP and 0.0067
-P@10 over the shipped row while grey loses up to 0.014 AP, beige up to 0.017, and
-`combo_beige_heels` falls from 0.106 to 0.096 at β = 1.5. Higher β amplifies CLIP's colour
-confusion, so the aggregate gain is bought with visible failures; we keep β = 0.1.
+The 0.0597 total splits into +0.0266 from re-ranking the same top-50 pool (0.3481 → 0.3747) and
++0.0331 from deepening the pool to 100 (0.3747 → 0.4078). P@10 barely moves across depths, 0.625 to
+0.628, which places the head gain in the re-ordering; a pool of 200 lifts the recall ceiling to 0.818
+and adds 0.0035 mAP, inside the noise, at twice the scoring cost. Stronger fusion is the same trade in
+reverse: β from 0.2 to 1.5 buys at most 0.0064 mAP while grey loses up to 0.014 AP, beige up to 0.017
+and `combo_beige_heels` falls from 0.106 to 0.096 at β = 1.5.
 
 ### 6.5 Human calibration and label sensitivity
 
@@ -419,112 +410,145 @@ confusion, so the aggregate gain is bought with visible failures; we keep β = 0
 | Colour family labels | 0.3997 | 0.4754 | +0.0757 (+0.0565, +0.0980) |
 | Sandal-merged labels | 0.3498 | 0.4138 | +0.0640 (+0.0442, +0.0867) |
 
-On the 20 human-judged queries, baseline P@10 is **0.925** (185 of 200 cells relevant),
-against 0.625 on the same queries under automatic labels. The gap measures label tolerance,
-not model quality: people count tan as brown, treat silver and grey as one family, and
-accept shoes whose gender is not visually obvious. By group, human P@10 is 0.967 for colour
-(58/60), 0.983 for type (59/60) and 0.850 for combo (68/80). The family and sandal variants
-keep the re-ranking gain significant, so the conclusion does not rest on exact colour names.
-The human pool covers the baseline top-10 only; re-ranking brings in unjudged images, which
-count as zero, so strict is reported for the baseline alone.
+On the 20 human-judged queries the baseline's P@10 is 0.925 (185 of 200 cells) against 0.625 when the
+same twenty lists are scored with automatic labels, which is `results/baseline_auto.json` restricted to
+the judged qids. The three deltas in the table are archived with their intervals in
+`results/comparisons/auto.json`, `family.json` and `sandal.json`. The gap measures label tolerance:
+people count tan as brown, treat silver and grey
+as one family, and accept shoes whose gender is not visually obvious. By group, human P@10 is 0.967
+for colour, 0.983 for type and 0.850 for combo. Under the family and sandal definitions the gain is
+larger than under auto labels and still significant, so the result does not rest on exact colour names
+or a fine sandal split.
+
+The human cells also expose a hole in our protocol: they cover the baseline top-10 only, and
+re-ranking brings new images into those twenty lists. Scoring the unjudged cells as zero gives the
+re-ranked arm a strict P@10 of 0.675 against the baseline's 0.925 (`results/rerank_strict.json`, 54 of
+200 cells unjudged), an artefact of missing labels — of the 146 cells a person had judged, the
+re-ranked list has 135 relevant, a rate of 0.925, identical to the baseline's. The 54 open cells are
+queued for judgement with `main.py label-sheet`; until they are filled we report strict P@10 for the
+baseline alone.
 
 ### 6.6 Held-out generalisation
 
-On the 30 held-out queries, mAP rises from 0.2579 to 0.3167 (+0.0588, CI +0.0050 to
-+0.1184) and P@10 from 0.4433 to 0.4767 (+0.0333, CI −0.0267 to +0.0967). The mAP interval
-excludes zero; the P@10 interval does not. Splitting by kind, the twenty paraphrases gain
-0.0980 mAP and 0.0600 P@10, while the ten misspellings lose 0.0198 mAP and 0.0200 P@10. In
-eight of the ten typos the parser misses at least one intended attribute, usually the
-colour; the attribute term is then partial or absent and those queries fall back towards
-plain cosine. The pattern is consistent with the design: the method helps when the
-vocabulary is understood and does no harm when it is not.
+On the 30 held-out queries mAP rises from 0.2579 to 0.3167 (+0.0588, CI +0.0050 to +0.1184) and P@10
+from 0.4433 to 0.4767 (+0.0333, CI −0.0267 to +0.0967; `results/comparisons/heldout.json`), so the mAP
+interval excludes zero and the
+P@10 interval does not. Split by kind, the twenty paraphrases gain 0.0980 mAP and 0.0600 P@10 while
+the ten misspellings lose 0.0198 and 0.0200: in eight of them the parser misses at least one intended
+attribute, usually the colour, and the query falls back towards plain cosine. A dictionary parser
+cannot match a word it does not contain.
 
 ### 6.7 Failure analysis
 
 | Case | Baseline AP / P@10 | Re-ranking AP / P@10 | Diagnosis |
 | --- | --- | --- | --- |
-| `sports sandals` | 0.003 / 0.0 | 0.034 / 0.1 | Taxonomy: sandal and sports sandal are visually close and inconsistently labelled |
+| `sports sandals` | 0.003 / 0.0 | 0.034 / 0.1 | Taxonomy: ten Sports Sandals images against sixty Sandals, visually close and inconsistently labelled |
 | `grey shoes` | 0.161 / 0.4 | 0.196 / 0.6 | Exact labels split silver and grey; under family labels 0.289 → 0.425 |
-| `beige heels` | 0.119 / 0.3 | 0.106 / 0.4 | Tan/khaki family combined with heels; head improves, deep ranking still confused |
+| `beige heels` | 0.119 / 0.3 | 0.106 / 0.4 | Tan and khaki family combined with heels; head improves, deep ranking stays confused |
 | `bronze heels` | 0.235 / 0.4 | 0.238 / 0.4 | Metallic colour depends on highlights that text cannot separate |
 | `casual shoes` (control) | 0.450 / 0.7 | 0.867 / 0.9 | Strong type signal; re-ranking recovers it |
 
-The five cases are rendered side by side, baseline above and re-ranked below, by
-`evaluation/tools/renderFailureCases.py`. The figure is used in the report and the
-demonstration. Two failures are label-side (sports sandals, grey) and two are visual-side
-(beige heels, bronze); only the control is a clean success. Reporting all four prevents the
-aggregate number from hiding the cases where the method is not usable.
+`main.py figure` renders the five cases side by side, baseline above and re-ranked below, into
+`evaluation/montages/failureCases.png`. Two failures sit on the label side, `sports sandals` and grey's
+exact colour split; two sit on the visual side, beige heels and bronze. Reporting them keeps the
+aggregate from hiding the queries where the method is not usable.
 
 ### 6.8 Negative results and rejected variants
 
-The first three bullets are archived sweeps; the last four are scope decisions and
-single-case observations from the same measurement code, so they carry no table.
+**Prompt ensembling.** Averaging six templates loses 5.1% mAP, 0.3302 against 0.3481, and 0.018 P@10
+(`results/prompt_auto.json`), and the loss falls mainly on type queries, −0.0451 mAP against −0.006 on
+colour and combo: template words dilute the colour and type terms inside one pooled vector, where the
+object class is itself the cue.
 
-- **Prompt ensembling.** Averaging six templates loses 5.1% mAP (0.3302 against 0.3481) and
-  0.018 P@10 (`results/prompt_auto.json`). The loss is not spread evenly: type queries drop
-  0.0451 mAP and 0.050 P@10, while colour and combo drop about 0.006 each. Templates that
-  describe the setting rather than the shoe do most damage where the object class is itself
-  the discriminative cue, because the template words dilute the colour and type terms inside
-  one pooled vector. Encoding the query as written avoids the loss.
-- **Higher β.** See §6.4: aggregate gain, visible colour regressions.
-- **Colour family at 0.25.** See §6.3: +0.0053 mAP, wider worst-case regression.
-- **Per-slot β.** Separate colour and type weights moved mAP by less than one in a thousand,
-  inside the bootstrap noise; one shared β is kept.
-- **Contrastive colour term.** A penalty against confusable colours lowered the bronze case,
-  so the score keeps the positive attribute term only.
-- **Deeper attribute keys.** In the 1,000 catalogue titles a lace word appears in 0.1%, a
-  closure word in 0.4%, a toe term in 0.8% and a material word in 3.0%; a material term in a
-  marketing title is not a grounded visual label, and none of them is reliably visible at
-  480×640. Extracting them would need detection or a vision-language model, beyond the
-  course scope.
-- **Fine-tuning and captioning.** The only text the catalogue pairs with an image is its
-  marketing title and one base colour, which are already the labels the evaluation uses, so
-  fine-tuning would train on the test signal; a captioning branch adds a lossy intermediate
-  text. The method stays training-free.
+**Rejected fusion settings.** β at 0.2–1.5 (§6.4) and a colour family weight of 0.25 (§6.3) buy a few
+thousandths of mAP and widen the visible colour regressions. Two further settings were tried in one
+exploratory run each and have no archived sweep, so they are stated as observations rather than
+numbers a clone can reproduce: splitting β per slot moved mAP by less than a thousandth, inside the
+bootstrap noise, and a penalty against confusable colours lowered the bronze case. The shipped score
+keeps one β and the positive attribute term.
+
+**Deeper attribute keys.** Forty of the 1,000 catalogue titles mention a lace, closure, toe or
+material word at all — 31 a material, 8 a toe, 1 a lace and none a closure (`dataset/manifest.csv`) —
+and none of those words is reliably visible at 480×640, so grounding them would need detection or a
+vision-language model.
+
+**Fine-tuning and captioning.** The only text paired with an image is its marketing title and one base
+colour, already the fields the auto labels use, so fine-tuning would train on the test signal and a
+captioning branch adds a lossy intermediate text.
 
 ---
 
 ## 7. Discussion
 
-### 7.1 Why the gains appear where they do
+### 7.1 Where the gain comes from
 
-Type queries gain most in mAP because eight categories are visually distinct and the
-zero-shot table separates them well. Colour queries gain most at the head because the
-parser, not the model, was the limiting factor: aligning the family weights removed the
-systematic pull towards silver and khaki. Combo queries expose the cost of AND semantics:
-when either slot is uncertain the product is small, so the head changes little even though
-the deep ranking improves. Metallic colours and the sandal taxonomy remain unsolved; both
-would need better labels or a model that reads material and construction.
+The arms in §6.1 support a narrower account than "the attribute classifier is accurate". Its top-1
+agreement with the catalogue is 0.369 on colour and 0.395 on type, so as a classifier it is unreliable.
+What the fusion needs is weaker: among 100 candidates that cosine already considered plausible, the
+probability of the named values has to be higher for images a person would accept. Type queries gain
+most in mAP because eight coarse categories support that comparison even when the argmax is often
+wrong; gender, at 0.858 top-1, is the one slot that behaves like a classifier. Colour queries gain most
+at the head because the parser was the limiting factor there (§6.3), and combo queries expose the cost
+of AND semantics: when either slot is uncertain the product is small and the head barely moves.
 
-### 7.2 Limitations and threats to validity
+The auto-label ceiling matters for how far this generalises. A lookup on the ground-truth attributes
+scores 1.000, so on that definition our 0.408 measures catalogue agreement. The evidence that the
+ordering is more than an artefact of it sits elsewhere: the gain grows under family labels (+0.0757)
+and the merged sandal taxonomy (+0.0640), holds on paraphrases outside the development set (+0.0980),
+and the 146 human-judged cells the re-ranked list reached are relevant at the same 0.925 rate as the
+baseline's.
 
-- **Gallery.** One thousand catalogue photographs on light backgrounds. Results may not
-  transfer to user photographs, cluttered scenes or a much larger catalogue.
-- **Labels.** Automatic labels inherit catalogue naming and are stricter than human
-  judgement (0.625 vs 0.925 P@10 on the same 20 queries). Cross-method comparisons use the
-  same labels, so the bias is shared, but absolute scores are not user-facing accuracy.
-- **Human labels.** 200 cells on the baseline top-10 only. They calibrate the baseline and
-  cannot rank a method that introduces new images.
-- **Queries.** Authored by the group, in the phrasing of the catalogue. The held-out set
-  mitigates overfitting but does not remove authorship bias.
-- **Model and resolution.** One frozen backbone at 480×640. Larger models or higher
-  resolution may change the colour confusions that motivate the method.
-- **Cost.** Latency was not benchmarked; the efficiency item in the brief is optional and
-  remains open.
+### 7.2 Limitations
+
+**Gallery.** One thousand catalogue photographs on light backgrounds; user photographs, cluttered
+scenes or a much larger catalogue may behave differently. One exploratory pass over the full
+9,222-row Footwear pool, at a lower resolution than the shipped gallery, diluted the relative gain; it
+has no archived sweep, so it stands as a scale caveat and not as a result. One frozen backbone at
+480×640: a larger model or a different resolution may move the colour confusions that motivate the
+method.
+
+**Labels.** Automatic labels inherit catalogue naming and are stricter than human judgement, 0.625
+against 0.925 P@10 on the same twenty queries. All arms share them, so comparisons are fair, but an
+absolute auto score is not user-facing accuracy and §6.1 shows the definition is saturable. The 200
+human cells cover the baseline top-10 only and 54 of them are still open (§6.5), so until they are
+judged the human definition gives a lower bound for re-ranking.
+
+**Queries.** Authored by the group in the phrasing of the catalogue; the held-out set limits
+overfitting but does not remove authorship bias.
+
+**Configuration and cost.** Latency was measured on one 8 GB laptop over eight passes of the query set
+(§4.5), with no multi-threaded or larger-gallery numbers, and the encoder runs open_clip's default text
+activation rather than QuickGELU (§7.3).
+
+### 7.3 Encoder configuration
+
+open_clip builds `ViT-B-32` from its default model config, where the text tower uses ordinary GELU,
+while the `openai` weights were trained with QuickGELU, so the library warns on every load.
+`python main.py encoder-check` re-encodes the gallery under both activations and re-runs the four
+arms on the 60 main queries (`results/encoderCheck.json`). QuickGELU lifts the baseline from 0.3481 to
+0.3676 mAP@50, so the shipped configuration sits 0.0195 below the activation the weights were trained
+with. The comparison between arms, which is what the report claims, survives the change: re-ranking
+gains +0.0597 mAP under GELU and +0.0580 under QuickGELU, 0.047 P@10 against 0.043, and prompt
+ensembling stays a loss at −5.1% against −4.7%. One reading does tilt: the attribute-only ordering
+reaches 0.4086 against the fusion's 0.4078 here, but 0.4136 against 0.4256 under QuickGELU, so the
+share of the mAP gain carried by cosine depends on the configuration. We keep the shipped one because
+the 200 human judgements were collected on its baseline top-10; under QuickGELU, 44 of those cells and
+66 of the re-ranked ones would name images nobody has looked at.
 
 ---
 
 ## 8. Conclusion
 
-A frozen CLIP model ranks footwear images reasonably, but its text space confuses colours
-that shoppers distinguish. A parser that knows the catalogue's colour families, combined
-with zero-shot attribute tables and a small fusion weight, raises mAP@50 by 17.2% and P@10
-by 0.047 on a 1,000-image gallery, with both gains outside the bootstrap interval. The
-method needs no training and no domain image-text pairs, and its failures are diagnosable:
-taxonomy, metallic colours and multi-attribute queries remain hard. Prompt ensembling, the
-usual first attempt at adaptation, is a net loss on this data. Future work would extend
-human labels to the re-ranked pool, measure latency, and test the method on a larger and
-messier gallery.
+A frozen CLIP model ranks footwear images tolerably, but its text space confuses colours a shopper
+separates. A parser that knows the catalogue's colour families, combined with zero-shot attribute
+tables and a small fusion weight, raises mAP@50 by 17.2% and P@10 by 0.047 on a 1,000-image gallery,
+with both intervals excluding zero, and the gain survives a wider colour definition, a merged sandal
+taxonomy and held-out paraphrases. The method needs no training, no domain image-text pairs and no
+extra query-time budget, and its failures are diagnosable: sandal taxonomy, metallic colours,
+multi-attribute heads and misspelled queries remain hard. Prompt ensembling, the usual first attempt
+at adaptation, is a net loss here, and the diagnostic arms read the automatic metric plainly — a label
+lookup closes it, the attribute term carries most of the mAP gain and cosine works at the head. Next
+come the 54 open human cells, a larger and messier gallery, and a parser that is not a dictionary.
 
 ---
 
@@ -532,12 +556,12 @@ messier gallery.
 
 | Dimension | What we did | Evidence |
 | --- | --- | --- |
-| Appropriateness (2.5%) | Chose a domain with visually meaningful attributes; defined two user groups; defined relevance with metadata and human labels | §1, §3, §5.1–5.2 |
-| Soundness (2.5%) | Frozen encoder; scoring independent of labels; paired bootstrap; one-factor ablations; held-out set; shipped gallery and scripts | §4, §5.4–5.5, §6, `results/` |
-| Excitement (2.5%) | Negative results for prompt ensembling and rejected fusion variants; four diagnosed failures plus a control; live baseline/rerank switch | §6.7–6.8, §10 |
-| Presentation (2.5%) | 7-minute structure with a live demo of one query under both methods; one results table; one failure figure | §10 |
-| Writing (2.5%) | 8-page plan with tables, APA references, explicit limitations, AI disclosure and contributions | §11 |
-| Peer Review (2.5%) | Review another group after all demonstrations, using the course form; submitted separately | §11.6 |
+| Appropriateness (2.5%) | Chose a domain with visually meaningful attributes; named two user groups; defined relevance four ways and stated where each one binds | §1, §3, §5.1–5.2 |
+| Soundness (2.5%) | Frozen encoder; paired bootstrap with archived intervals; one-factor ablations; two diagnostic arms that bound the oracle; held-out set; latency measured; encoder activation measured; shipped gallery and scripts | §4.5, §5.4–5.5, §6.1, §7.3, `results/` |
+| Excitement (2.5%) | Negative result for prompt ensembling; the oracle and attribute-only arms reported against our own method; four diagnosed failures plus a control; live baseline/re-rank switch | §6.1, §6.7–6.8, §10 |
+| Presentation (2.5%) | 7-minute structure with one query shown under both methods; five tables; one failure figure | §10 |
+| Writing (2.5%) | 8-page plan, APA references, explicit limitations, AI disclosure, contributions | §11 |
+| Peer Review (2.5%) | Review another group after all demonstrations on the course form; goes inside the report after the 8 pages | §11.6 |
 
 ---
 
@@ -545,9 +569,9 @@ messier gallery.
 
 ### 10.1 Constraints
 
-Seven minutes, no Q&A, shared over Zoom; setup counts towards the time. The server is
-started before the session and the browser is already on the page, so the demo begins with
-a query rather than an install.
+Seven minutes, no Q&A, shared over Zoom, and setup counts towards the time. The server is
+started before the session and the browser is already on the page, so the demo begins with a
+query. The cold start is about 32 s (§4.5); do not start it live.
 
 ### 10.2 Timing
 
@@ -557,133 +581,156 @@ a query rather than an install.
 | 0:35–1:20 | 2 | Baseline and one visible failure |
 | 1:20–2:40 | 3 | Parser, attribute tables, fusion formula, weights |
 | 2:40–4:10 | 4 | Live demo: one query, both methods |
-| 4:10–5:30 | 5 | Main results, confidence intervals, group caveat |
+| 4:10–5:30 | 5 | Main results, the five arms, confidence intervals |
 | 5:30–6:25 | 6 | Ablations, negative results, failure figure |
 | 6:25–7:00 | 7 | Limitations and conclusion |
 
 ### 10.3 Slide script
 
 **Slide 1 — Problem and users.**
-"A shopper can describe a shoe — grey casual shoes, silver sports shoes — but cannot name
-its stock code. Catalogue search needs keywords; we search pixels. Our users are shoppers
-browsing by appearance and catalogue teams checking a collection."
+"A shopper can describe a shoe — grey casual shoes, silver sports shoes — but cannot name its
+stock code. Catalogue search needs keywords; we search pixels. Our users are shoppers browsing
+by appearance and catalogue teams checking a collection."
 
 **Slide 2 — Baseline.**
-"We start from a frozen CLIP model and cosine similarity. It works, but it confuses colours
-that people separate: ask for grey and silver shoes come back; ask for brown and tan shoes
-are missed. The model sees colour words as neighbours in one text space."
+"We start from a frozen CLIP model and cosine similarity. It works, and it confuses colours
+that people separate: ask for grey and silver shoes come back, ask for brown and tan shoes are
+missed. In CLIP's text space those colour words are neighbours."
 
 **Slide 3 — Method.**
 "We add two things without training. A parser turns the query into colour, type and gender,
 with a literal weight of one and half weight for colour-family neighbours. CLIP text prompts
 turn the same attributes into probability tables per image. We add the weighted product of
-those probabilities to the cosine score — a product, because a query that names a colour
-and a type wants both. The candidate pool is 100, the returned list 50."
+those probabilities to the cosine score — a product, because a query that names a colour and a
+type wants both. Candidate pool 100, returned list 50."
 
 **Slide 4 — Demo.**
-"Same query, two methods. On the left, baseline; on the right, re-ranked. [Type `silver
-sports shoes`.] The baseline returns grey and white shoes high; the re-ranked list puts
-silver first. The line under each image is cosine and attribute agreement, so you can see
-which term moved it. [Switch to `sports sandals`.] This one is a failure we report: the
-catalogue's sandal types are visually close, and neither method fixes it."
+"Same query, two methods. Baseline on the left, re-ranked on the right. [Type `silver sports
+shoes`.] The baseline returns grey and white shoes high; the re-ranked list puts silver first.
+The line under each image is cosine and attribute agreement, so you can see which term moved
+it. [Switch to `sports sandals`.] This one is a failure we report: the catalogue's sandal
+types are visually close and neither method fixes it."
 
 **Slide 5 — Results.**
-"Across 60 queries, mAP@50 goes from 0.348 to 0.408, plus 17.2%, with a paired bootstrap
-interval that excludes zero; P@10 goes from 0.582 to 0.628. The gain is largest on type
-queries and in the head of colour queries. Multi-attribute queries improve mostly deeper in
-the list: their head P@10 moves only 0.009."
+"Across 60 queries mAP@50 goes from 0.348 to 0.408, plus 17.2%, with a paired bootstrap
+interval that excludes zero; P@10 goes from 0.582 to 0.628. Two extra arms keep us honest.
+Ordering by the attribute term alone reaches the same mAP, so cosine is doing the head work.
+And a lookup on the ground-truth labels scores 1.000, which tells you the automatic metric
+measures catalogue agreement — that is why we also report human judgements and two widened
+label sets, where the gain is bigger."
 
 **Slide 6 — What did not work.**
-"Prompt ensembling, the usual free trick, loses five percent: template words dilute the
-colour and type terms. Raising the fusion weight buys total score with visible colour
-failures, so we keep it small. Our failure figure shows four cases and one control:
-taxonomy, silver versus grey, beige heels, metallic bronze."
+"Prompt ensembling, the usual free trick, loses five percent: template words dilute the colour
+and type terms. Raising the fusion weight buys total score with visible colour failures, so we
+keep it small. Our failure figure shows four cases and one control: taxonomy, silver versus
+grey, beige heels, metallic bronze."
 
 **Slide 7 — Limits and close.**
-"One thousand catalogue images, automatic labels that are stricter than people, and a human
-check of 200 cells on the baseline only. Within that scope the method is training-free,
-reproducible, and its failures are visible. The repository ships the gallery, the labels and
-every script."
+"One thousand catalogue images, automatic labels stricter than people, and a human check of 200
+cells with 54 of them still to judge on the re-ranked lists. Within that scope the method is
+training-free, adds no query-time cost, and its failures are visible. The repository ships the
+gallery, the labels and every script."
 
 ### 10.4 Recommended demonstration queries
 
-Numbers below are read from `results/baseline_auto.json` and `results/rerank_auto.json`
-(auto labels, 60 queries, β = 0.1, candidate depth 100), so each one is checkable in the
-repository. Every query is typed into the demo with the method switch flipped between
-baseline and re-rank.
+Numbers are read from `results/baseline_auto.json` and `results/rerank_auto.json` (auto labels,
+60 queries, β = 0.1, candidate depth 100), and the score components come from
+`python main.py search --method rerank --top 10 --query "…"`, which prints cosine and agreement for
+every item it returns.
 
-| Query | Role in the talk | baseline AP / P@10 | re-rank AP / P@10 | What to point at |
+| Query | Role in the talk | Baseline AP / P@10 | Re-rank AP / P@10 | What to point at |
 | --- | --- | --- | --- | --- |
-| `casual shoes` | Strongest single switch | 0.450 / 0.70 | **0.867 / 0.90** | Ranks 1–4 are all Casual Shoes with agreement 0.54–0.64; the baseline head mixes colours and a Sports shoe. |
-| `silver sports shoes` | Colour separation (slide 4) | 0.254 / 0.50 | 0.317 / 0.50 | Silver first instead of white and grey. R@10 stays 0.185, so the gain is ordering inside the head — say so rather than over-claiming. |
-| `beige casual shoes` | Visually clean backup | 0.394 / 0.60 | 0.386 / 0.50 | Top-5 all Beige/Khaki Casual. AP dips because tan and khaki count as non-relevant under metadata labels; use it to show the label caveat, not the gain. |
-| `black casual shoes` | Honest limitation | 0.153 / 0.30 | 0.215 / 0.40 | Two black men's formal shoes survive in the head: the Casual/Formal zero-shot gap is small, and at β = 0.1 the attribute term moves the score by 0.003–0.006 against a cosine spread of the same size. |
-| `sports sandals` | Diagnosed failure (slide 4) | 0.003 / 0.00 | 0.034 / 0.10 | Sandal subtypes are visually close and the metadata split is finer than the pixels; neither method fixes it. |
-| `bronze heels` | Backup for the metallic case | 0.235 / 0.40 | 0.238 / 0.40 | Bronze reads as brown; the attribute term is a near no-op here, which matches `evaluation/montages/failureCases.png`. |
+| `casual shoes` | Strongest single switch | 0.450 / 0.70 | **0.867 / 0.90** | Ranks 1–4 are all Casual Shoes with agreement 0.54–0.64; the baseline head mixes colours and a Sports shoe |
+| `silver sports shoes` | Depth, not the head | 0.254 / 0.50 | 0.317 / 0.50 | Both lists open with a silver shoe and a white one at rank 3; the re-ranked head adds a grey shoe at rank 5 and 22 of its top 50 are relevant against the baseline's 14, so point at the list below row ten, not at P@10, which is unchanged |
+| `beige casual shoes` | Visually clean backup | 0.394 / 0.60 | 0.386 / 0.50 | Top-5 all Beige/Khaki Casual; AP dips because tan and khaki count as non-relevant under metadata labels, so use it for the label caveat |
+| `black casual shoes` | Honest limitation | 0.153 / 0.30 | 0.215 / 0.40 | Two black men's formal shoes survive at ranks 7 and 10: the Casual/Formal zero-shot gap is small, their agreement is 0.03–0.04 against 0.05–0.10 for the casual items, so β moves the score by 0.003–0.010 across a cosine range of 0.011 in the head |
+| `sports sandals` | Diagnosed failure (slide 4) | 0.003 / 0.00 | 0.034 / 0.10 | Sandal subtypes are visually close and the metadata split is finer than the pixels |
+| `bronze heels` | Backup for the metallic case | 0.235 / 0.40 | 0.238 / 0.40 | Bronze reads as brown and the attribute term is a near no-op, which matches `evaluation/montages/failureCases.png` |
 
-Slide 4 uses `silver sports shoes` then `sports sandals`. `casual shoes` is the best
-replacement if the audience needs one obvious win, and `black casual shoes` is the query to
-volunteer when someone asks what still fails.
+Slide 4 uses `silver sports shoes` then `sports sandals`. `casual shoes` is the replacement if
+the audience needs one obvious win, and `black casual shoes` is the query to volunteer when
+someone asks what still fails.
 
 ### 10.5 Demo checklist
 
-- Start `python retrieval/searchWeb.py` before the session; confirm the page loads with the
-  cached features (a few seconds, no model download).
-- Pre-type the queries from §10.4 in the order you plan to use them; keep `bronze heels` as
-  the spare.
-- Check that the method switch re-runs the query; show both lists for the same query.
+- Run `python main.py web` before the session and leave the tab open; with the cached features
+  the page is up in a few seconds and no model download happens.
+- Pre-type the §10.4 queries in the order you plan to use them; keep `bronze heels` as the
+  spare.
+- Check that the method switch re-runs the query, and show both lists for the same query.
 - Record a 90-second backup video in case the network or projector fails.
-- Zoom share the application window, not the desktop; font size at least 18 pt.
+- Share the application window in Zoom, not the desktop; font size at least 18 pt.
 
 ---
 
 ## 11. Report plan (internal)
 
-### 11.1 Page budget (A4, 12 pt Times New Roman, 1-inch margins, single column)
+### 11.1 Page budget, measured by laying the draft out
 
-| Section | Pages |
-| --- | --- |
-| Title, abstract, introduction | 0.9 |
-| Related work | 0.4 |
-| Data | 0.6 |
-| Method | 1.6 |
-| Evaluation design | 0.9 |
-| Results | 1.9 |
-| Discussion and conclusion | 0.6 |
-| AI disclosure and contributions | 0.4 |
-| References | 0.7 (not counted) |
+The submission range — the abstract through the end of §8, plus the AI-use statement and the
+contribution table — lays out at 10.2 pages. The number comes from a render, not from arithmetic: the
+markdown is converted with the brief's own settings (A4 portrait, 1-inch margins, 12 pt Times New
+Roman, single line spacing, tables at full text width, Figure 2 printed 6.5 in wide, no space before
+or after paragraphs) and printed to PDF by headless Chrome
+(`Google Chrome --headless=new --no-pdf-header-footer --print-to-pdf=page.pdf page.html`), and the
+text ends 103 words into page 11.
+Word's default 8 pt paragraph spacing adds 0.4 pages; adding the Figure 1 method diagram adds 0.35,
+which puts the two-figure version at 10.9. A laid-out page carries about 490 words of mixed prose and
+table text, so the 600 words per page assumed by the first version of this section was too generous
+and the excess is larger than it recorded.
 
-The body (abstract to conclusion) currently runs to about 4,400 words. With two figures and
-four tables, the 8-page limit needs roughly 3,700 words of body text. Planned cuts: the
-group commentary in §6.2 to three sentences; the β paragraph in §6.4 to one sentence (the
-table carries the numbers); the held-out paragraph in §6.6 to two sentences; §6.8 to four
-bullets; §3.1 and §5.1 to their tables plus one sentence each. These cuts remove about 700
-words without dropping a claim.
+Inside that range the draft holds 4,279 words of prose over 296 lines, 44 data rows under nine header
+rows, 38 headings, one displayed formula and one figure. Four levers pay the excess back, cheapest
+first:
+
+- Paragraph spacing set to 0 pt instead of Word's default 8 pt: 0.4 pages, and the brief constrains
+  the line spacing only.
+- The nine tables merged into the four of §11.2: 0.1 pages, five header rows.
+- The 38 headings reduced to 28 — §4 to four, §5 to three, §6 to four, §3 to three, §7 to two: 0.2
+  pages, and one level of navigation.
+- Prose, for the remainder.
+
+Reaching 8 pages therefore costs 1,100 words of prose with Figure 2 alone and 1,270 if Figure 1 stays.
+The allowance per section, ordered by how much each can lose without dropping a claim, with the words
+it measures now: §4.4 80 of 227, §6.8 80 of 239, §4.5 80 of 217, §5.2 70 of 222, §6.5 70 of 224, §7.1
+70 of 217, §6.1 60 of 218, §7.2 55 of 214, §4.2 55 of 191, §7.3 45 of 179, §8 40 of 160, §5.1 35 of
+149, §1.1 35 of 144, §3.1 35 of 126, Abstract 35 of 162, §2 30 of 136, §4.3 30 of 120, §1.3 25 of 106,
+§6.4 25 of 126, §4.1 20 of 104, §6.6 20 of 94, §5.5 15 of 88, §6.3 15 of 86, §6.2 10 of 78, §5.4 10 of
+73, §4.6 10 of 64, §5.3 10 of 63, §3.3 10 of 59, §1.2 10 of 59, §6.7 10 of 55, §3.2 5 of 42, §3.4 5 of
+37. The list sums to 1,105 words and leaves 3,174 of prose; no single allowance passes 37% of its
+section, so every table row, every metric and every claim above survives the cut. Figure 1 is worth
+its 0.35 page only if the method diagram earns more with the markers than the two paragraphs it
+displaces; the slides can carry the same diagram as a standalone image.
 
 ### 11.2 Figures and tables
 
-- Figure 1: method diagram (query → parser → three tables → fusion → ranking). Draw once
-  for the report and the slides.
-- Figure 2: `evaluation/montages/failureCases.png`, five cases, baseline above, re-ranked
-  below.
+- Figure 1: method diagram (query → parser → three tables → fusion → ranking). Draw once for
+  the report and the slides. Still to do.
+- Figure 2: `evaluation/montages/failureCases.png`, five cases, baseline above and re-ranked
+  below. Ships in the repository; regenerate with `python main.py figure`.
 - Table 1: dataset and query sets (merge §3.2 and §5.1).
-- Table 2: main results and group breakdown (merge §6.1 and §6.2).
+- Table 2: the five arms plus the group breakdown (merge §6.1 and §6.2).
 - Table 3: parser ablation and fusion sweep (merge §6.3 and §6.4).
-- Table 4: label sensitivity, held-out and failures (merge §6.5–6.7, or keep failures as a
-  short list if space is tight).
+- Table 4: label sensitivity, held-out and failures (merge §6.5–6.7; keep failures as a short
+  list if space is tight).
 
 ### 11.3 Formatting checklist
 
-- 8 pages maximum; 12 pt Times New Roman; 1-inch margins; single spacing; no cover page or
-  table of contents.
-- APA 7th edition for references and in-text citations.
-- Figures and tables count towards the page limit; references and peer review do not.
-- Every number in a table must match a file in `results/`, with the script that produced it
+The rules below are the course deck's own words (slide 16, *Report Format*, and slide 17, *Peer
+Review*); the page count in §11.1 is measured against them.
+
+- 8 A4 portrait pages maximum for the body; 12 pt Times New Roman; 1-inch margins; single line
+  spacing; one column; no cover page or table of contents.
+- Paragraph spacing set to 0 pt before and after, which the brief leaves open and §11.1 prices at 0.4
+  pages.
+- APA 7th edition for references and in-text citations; references and the peer review sit outside the
+  8 pages on unlimited pages.
+- Every number in a table must match a file in `results/`, with the command that produced it
   named in the caption or the text. Observations with no archived sweep stay in prose (§6.8).
 - Include the AI-use disclosure and the member-contribution table (templates below).
 - Give the code location on page 1: `https://github.com/Jayden-T-Chen/Comp5523_Project`. The
   repository is public, so the link alone lets a marker clone the gallery, the labels and the
-  evaluation suite; no invite or archive is needed.
+  evaluation suite.
 
 ### 11.4 AI-use disclosure (draft; confirm against actual use)
 
@@ -699,12 +746,34 @@ words without dropping a claim.
 | --- | --- |
 | [Name] |  |
 
+Fill before submission. The brief asks for delineated roles, so name what each person owned:
+gallery curation, query authoring, the 200 human judgements, parser and fusion code, evaluation
+scripts, report sections, demo and recording.
+
 ### 11.6 Peer review
 
-Peer review is assigned after all demonstrations. Our group reviews another group's
-presentation with the course form, focusing on whether the relevance definition is stated
-clearly and whether the demonstration runs within the time limit. The review is submitted
-separately and is not part of the 8 pages.
+Peer review is assigned after all demonstrations and is submitted **inside this report**, after
+the 8 pages, where it does not count towards the limit. Our group reviews another group's
+presentation on the course form, focusing on whether the relevance definition is stated clearly
+and whether the demonstration ran within the time limit. Placeholder for the review text:
+[to be added after 18 November 2026].
+
+### 11.7 Open items
+
+| Item | Owner | Blocks |
+| --- | --- | --- |
+| Judge the 54 open strict cells (`python main.py label-sheet`, then `python main.py label-sheet --merge <export>`) | group | §6.5 re-run and the strict row of Table 4 |
+| Re-run strict for baseline and re-rank after the merge, refresh §6.5 and §7.2 | — | Table 4 |
+| Cut the 1,105 words listed in §11.1, merge the nine tables into four and the 38 headings into 28 | — | 8-page limit |
+| Draw Figure 1 (method diagram) | — | Report layout |
+| Export the report to an 8-page PDF | — | Submission |
+| Slides and the 90-second backup recording | — | 18 November demo |
+| Fill §11.5 contributions and confirm §11.4 against actual use | group | Submission |
+| Peer review text after the demo session | group | Submission |
+
+Decided on 5 November 2026: the encoder keeps open_clip's default text activation, with §7.3 and
+`results/encoderCheck.json` recording the measured deviation, so the 200 existing human judgements
+stay valid and no re-labelling follows from that choice.
 
 ---
 
@@ -726,32 +795,47 @@ Nogueira, R., & Cho, K. (2019). *Passage re-ranking with BERT*. arXiv.
 https://arxiv.org/abs/1901.04085
 
 Radford, A., Kim, J. W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S., Sastry, G., Askell,
-A., Mishkin, P., Clark, J., Krueger, G., & Sutskever, I. (2021). Learning transferable
-visual models from natural language supervision. In *Proceedings of the 38th International
-Conference on Machine Learning* (pp. 8748–8763). PMLR.
+A., Mishkin, P., Clark, J., Krueger, G., & Sutskever, I. (2021). Learning transferable visual
+models from natural language supervision. In *Proceedings of the 38th International Conference
+on Machine Learning* (pp. 8748–8763). PMLR.
 
 ---
 
 ## Appendix A. Reproduction commands (not for submission)
 
 ```bash
-# Main oracle
-python evaluation/tools/runEvaluation.py --method baseline
-python evaluation/tools/runEvaluation.py --method prompt
-python evaluation/tools/runEvaluation.py --method rerank
-python evaluation/tools/runEvaluation.py --method baseline --labels strict
+# The five arms on the main 60 queries
+python main.py eval --method baseline
+python main.py eval --method prompt
+python main.py eval --method attr_only
+python main.py eval --method rerank
+python main.py eval --method metadata          # oracle; reads the labels
 
-# Widened labels
-python evaluation/tools/runEvaluation.py --method rerank --queries evaluation/sets/queries_family.json
-python evaluation/tools/runEvaluation.py --method rerank --queries evaluation/sets/queries_sandal.json
+# Human labels and the widened definitions
+python main.py eval --method baseline --labels strict
+python main.py eval --method rerank   --labels strict
+python main.py label-sheet                     # judge the 54 open cells, then --merge the export
+python main.py eval --method baseline --queries evaluation/sets/queries_family.json
+python main.py eval --method rerank   --queries evaluation/sets/queries_family.json
+python main.py eval --method baseline --queries evaluation/sets/queries_sandal.json
+python main.py eval --method rerank   --queries evaluation/sets/queries_sandal.json
 
-# Held-out and significance
-python evaluation/tools/runEvaluation.py --method rerank --queries evaluation/sets/queries_heldout.json
-python evaluation/tools/compareResults.py results/baseline_auto.json results/rerank_auto.json
-python evaluation/tools/compareResults.py results/baseline_auto_heldout.json results/rerank_auto_heldout.json --by kind
+# Held-out set and the intervals quoted in section 6
+python main.py eval --method baseline --queries evaluation/sets/queries_heldout.json
+python main.py eval --method rerank   --queries evaluation/sets/queries_heldout.json
+python main.py compare results/baseline_auto.json results/rerank_auto.json --out results/comparisons/auto.json
+python main.py compare results/baseline_auto.json results/attr_only_auto.json --out results/comparisons/attr_only.json
+python main.py compare results/rerank_legacy_auto.json results/rerank_auto.json --out results/comparisons/parser.json
+python main.py compare results/baseline_auto_family.json results/rerank_auto_family.json --out results/comparisons/family.json
+python main.py compare results/baseline_auto_sandal.json results/rerank_auto_sandal.json --out results/comparisons/sandal.json
+python main.py compare results/baseline_auto_heldout.json results/rerank_auto_heldout.json --by kind --out results/comparisons/heldout.json
+python main.py eval --method rerank --parser legacy   # rerank_legacy_auto.json, §6.3
 
-# Ablation and figure
-python evaluation/tools/ablateParser.py                                       # parser_ablation.json
-python evaluation/tools/ablateFusion.py                                       # fusion_ablation.json
-python evaluation/tools/renderFailureCases.py                                 # montages/failureCases.png
+# Ablations, probes, figure, tests
+python main.py ablate-parser      # results/ablations/parser_ablation.json
+python main.py ablate-fusion      # results/ablations/fusion_ablation.json
+python main.py probe              # results/attribute_probe.json
+python main.py encoder-check      # results/encoderCheck.json, §7.3: two gallery encodes
+python main.py figure             # evaluation/montages/failureCases.png
+python main.py test
 ```

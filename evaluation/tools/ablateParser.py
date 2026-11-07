@@ -11,27 +11,18 @@ Type aliases stay at weight 1.0 throughout: they are true synonyms, not
 approximate colours. Beta and the candidate depth are held at the shipped
 values so the only variable is the parser.
 
-Usage:
-  python evaluation/tools/ablateParser.py
-  python evaluation/tools/ablateParser.py --out results/parser_ablation.json
+Reached through `python main.py ablate-parser`.
 """
 from __future__ import annotations
 
-import argparse
 import json
-import sys
 from pathlib import Path
 
+from . import runEvaluation as ev
+
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "retrieval"))
-sys.path.insert(0, str(ROOT / "evaluation" / "tools"))
-
-import queryParse                                  # noqa: E402
-import rerank                                      # noqa: E402
-import runEvaluation as ev                         # noqa: E402
-
 QUERIES_PATH = ROOT / "evaluation" / "sets" / "queries.json"
-RESULTS_DIR = ROOT / "results"
+OUT_PATH = ROOT / "results" / "ablations" / "parser_ablation.json"
 CONFIGS = [
     ("legacy", False, 1.0),
     ("mask", True, 1.0),
@@ -42,11 +33,12 @@ CASES = ["color_grey", "color_beige", "color_olive", "color_orange",
          "combo_beige_heels", "type_sports_sandals"]
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser(description="Parser ablation")
-    ap.add_argument("--out", type=Path,
-                    default=RESULTS_DIR / "parser_ablation.json")
-    args = ap.parse_args()
+def add_args(sub) -> None:
+    sub.add_argument("--out", type=Path, default=OUT_PATH)
+
+
+def main(args) -> None:
+    from retrieval import queryParse, rerank
 
     data = json.loads(QUERIES_PATH.read_text(encoding="utf-8"))
     queries = [q for q in data["queries"] if q["relevant"]]
@@ -79,6 +71,7 @@ def main() -> None:
             }
         )
 
+    queryParse.apply_preset("shipped")
     payload = {
         "note": "Parser ablation; see docs/projectReport.md 6.3",
         "beta": rerank.BETA,
@@ -90,7 +83,3 @@ def main() -> None:
     args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
                         encoding="utf-8")
     print(f"\n-> {args.out}")
-
-
-if __name__ == "__main__":
-    main()

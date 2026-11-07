@@ -1,0 +1,84 @@
+{
+  "note": "Zero-shot attribute table accuracy against the catalogue fields, the size of the two fused terms, and query latency; see docs/projectReport.md 3.3, 4.4, 4.5 and 7.2",
+  "device": "mps",
+  "gallery": 1000,
+  "n_queries_timed": 60,
+  "timing_rounds": 8,
+  "attribute_table": {
+    "color": {
+      "field": "color",
+      "n_values": 40,
+      "top1": 0.369,
+      "top2": 0.506
+    },
+    "type": {
+      "field": "articleType",
+      "n_values": 8,
+      "top1": 0.395,
+      "top2": 0.637
+    },
+    "gender": {
+      "field": "gender",
+      "n_values": 2,
+      "top1": 0.858,
+      "top2": 1.0
+    }
+  },
+  "score_scales": {
+    "rerank_depth": 100,
+    "beta": 0.1,
+    "device_note": "top-100 candidate pool, 60 main queries",
+    "color": {
+      "n": 20,
+      "cosine_spread_median": 0.039,
+      "agreement_peak_median": 0.639,
+      "agreement_peak_min": 0.224,
+      "agreement_peak_max": 0.978,
+      "bonus_at_beta_median": 0.0639
+    },
+    "combo": {
+      "n": 22,
+      "cosine_spread_median": 0.0445,
+      "agreement_peak_median": 0.315,
+      "agreement_peak_min": 0.059,
+      "agreement_peak_max": 0.852,
+      "bonus_at_beta_median": 0.0315
+    },
+    "type": {
+      "n": 18,
+      "cosine_spread_median": 0.0249,
+      "agreement_peak_median": 0.814,
+      "agreement_peak_min": 0.101,
+      "agreement_peak_max": 0.972,
+      "bonus_at_beta_median": 0.0814
+    }
+  },
+  "latency": {
+    "baseline_per_query_ms": 37.0,
+    "baseline_per_round_ms": [
+      46.1,
+      36.4,
+      24.9,
+      33.6,
+      37.5,
+      43.9,
+      37.2,
+      36.1
+    ],
+    "rerank_per_query_ms": 37.9,
+    "rerank_per_round_ms": [
+      29.1,
+      43.0,
+      43.1,
+      43.0,
+      35.8,
+      34.8,
+      30.0,
+      44.5
+    ],
+    "attribute_tables_once_ms": 1757.2,
+    "gallery_reencode_once_s": 41.0,
+    "cold_start_s": 31.2,
+    "feature_cache_hit": true
+  }
+}

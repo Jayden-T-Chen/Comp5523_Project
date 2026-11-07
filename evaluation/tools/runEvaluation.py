@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Score a retrieval method against evaluation/sets/queries.json.
+"""Score a retrieval method against an evaluation set.
 
 Metrics (all averaged over queries):
   mAP@50   mean average precision, relevant set capped at the ranking depth
@@ -10,34 +10,34 @@ Metrics (all averaged over queries):
 --labels strict  uses the by-eye judgments in evaluation/sets/judgements.json
                  (only the queries that have been judged)
 
-Reported numbers use `auto`, because its labels cover the whole gallery and are
-therefore comparable across methods. The strict pool was judged on the baseline
-top-10 only, so a method that surfaces new images is scored 0 on them until they
-are judged too. Use strict to calibrate absolute quality; cross-method ranking
-rests on auto.
+Five methods live in METHODS. Two of them are diagnostics rather than candidate
+systems, and the report says so wherever they appear:
 
-Methods live in METHODS; add "prompt" / "rerank" there as they are built, so
-every number in the report comes from the same script and the same queries.
+  baseline    frozen CLIP cosine
+  prompt      the same cosine over a mean of six prompt phrasings
+  rerank      cosine plus the zero-shot attribute term (the shipped system)
+  attr_only   the attribute term on its own, cosine breaking ties only. It
+              answers how much of the rerank gain the visual score carries.
+  metadata    a catalogue lookup on the query's ground-truth attributes. It
+              reads the labels, so it is an upper bound on the auto oracle and
+              never a method we would ship.
 
-Usage:
-  python evaluation/tools/runEvaluation.py --method baseline
-  python evaluation/tools/runEvaluation.py --method baseline --labels strict
+Reached through `python main.py eval`.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "retrieval"))
-
 QUERIES_PATH = ROOT / "evaluation" / "sets" / "queries.json"
 JUDGEMENTS_PATH = ROOT / "evaluation" / "sets" / "judgements.json"
 RESULTS_DIR = ROOT / "results"
 DEPTH = 50          # ranking depth used for mAP
 TOPK = 10           # depth used for P@10 / R@10
+
+_CTX: dict = {}
 
 
 def average_precision(ranked: list[str], relevant: set[str], depth: int) -> float:
@@ -52,71 +52,112 @@ def average_precision(ranked: list[str], relevant: set[str], depth: int) -> floa
     return total / min(len(relevant), depth)
 
 
-def rank_baseline(query: str, depth: int) -> list[str]:
+def _pool(depth: int) -> int:
+    """Candidate pool for the re-ranking arms: never narrower than the metric."""
+    from retrieval import rerank
+
+    return max(depth, rerank.RERANK_DEPTH)
+
+
+def rank_baseline(q: dict, depth: int) -> list[str]:
     """Frozen CLIP: cosine similarity over cached image features."""
-    import clipCore
+    from retrieval import clipCore
 
     ctx = _CTX
-    q = clipCore.embed_query(ctx["model"], ctx["tokenizer"], query, ctx["device"])
-    return _topk(q, depth)
+    vec = clipCore.embed_query(ctx["model"], ctx["tokenizer"], q["query"],
+                               ctx["device"])
+    return _topk(vec, depth)
 
 
-def rank_prompt(query: str, depth: int) -> list[str]:
+def rank_prompt(q: dict, depth: int) -> list[str]:
     """Same ranking, but the query is the mean of several prompt phrasings."""
-    import clipCore
+    from retrieval import clipCore
 
     ctx = _CTX
-    q = clipCore.embed_query_ensemble(
-        ctx["model"], ctx["tokenizer"], query, ctx["device"])
-    return _topk(q, depth)
+    vec = clipCore.embed_query_ensemble(ctx["model"], ctx["tokenizer"],
+                                        q["query"], ctx["device"])
+    return _topk(vec, depth)
 
 
-def _topk(q, depth: int) -> list[str]:
+def _topk(vec, depth: int) -> list[str]:
     ctx = _CTX
-    scores = (ctx["feats"] @ q.T).squeeze(1)
+    scores = (ctx["feats"] @ vec.T).squeeze(1)
     k = min(depth, len(ctx["rows"]))
     _vals, idxs = scores.topk(k)
     return [ctx["rows"][i]["id"] for i in idxs.tolist()]
 
 
-def rank_rerank(query: str, depth: int) -> list[str]:
-    """Similarity + zero-shot attribute agreement over the coarse top-k.
-
-    The candidate pool is RERANK_DEPTH, independent of the metric cutoffs:
-    re-ranking 100 candidates and returning the best 50 (DEPTH) is the shipped
-    configuration; `depth` only bounds what the caller keeps.
-    """
-    import rerank
+def rank_rerank(q: dict, depth: int) -> list[str]:
+    """Similarity plus zero-shot attribute agreement over the coarse top-k."""
+    from retrieval import rerank
 
     ctx = _CTX
     beta = ctx.get("beta", rerank.BETA)
-    return rerank.rerank(
-        ctx["model"], ctx["tokenizer"], ctx["feats"], ctx["rows"],
-        query, max(depth, rerank.RERANK_DEPTH), ctx["device"], beta)
+    return rerank.rerank(ctx["model"], ctx["tokenizer"], ctx["feats"],
+                         ctx["rows"], q["query"], _pool(depth),
+                         ctx["device"], beta)
 
 
-METHODS = {"baseline": rank_baseline, "prompt": rank_prompt,
-           "rerank": rank_rerank}
+def rank_attr_only(q: dict, depth: int) -> list[str]:
+    """The attribute term alone over the same pool; cosine only breaks ties."""
+    from retrieval import rerank
 
-_CTX: dict = {}
+    ctx = _CTX
+    return rerank.rerank(ctx["model"], ctx["tokenizer"], ctx["feats"],
+                         ctx["rows"], q["query"], _pool(depth),
+                         ctx["device"], mode="attr")
+
+
+def rank_metadata(q: dict, depth: int) -> list[str]:
+    """Upper bound on the auto oracle: look the answer up in the catalogue.
+
+    Uses the ground-truth `attrs` of the query, so it sees the labels. Images
+    that match every named attribute come first, ordered among themselves by
+    cosine so the head is not arbitrary; the rest follow.
+    """
+    from retrieval import clipCore
+
+    ctx = _CTX
+    attrs = q.get("attrs") or {}
+    rows = ctx["rows"]
+    vec = clipCore.embed_query(ctx["model"], ctx["tokenizer"], q["query"],
+                               ctx["device"])
+    sims = (ctx["feats"] @ vec.T).squeeze(1)
+    matched = [i for i, r in enumerate(rows)
+               if all(r.get(field) == value for field, value in attrs.items())]
+    rest = [i for i in range(len(rows)) if i not in set(matched)]
+
+    def by_sim(idxs):
+        return sorted(idxs, key=lambda i: -float(sims[i]))
+
+    return [rows[i]["id"] for i in (by_sim(matched) + by_sim(rest))[:depth]]
+
+
+METHODS = {
+    "baseline": rank_baseline,
+    "prompt": rank_prompt,
+    "rerank": rank_rerank,
+    "attr_only": rank_attr_only,
+    "metadata": rank_metadata,
+}
 
 
 def load_context() -> None:
-    import clipCore
+    from retrieval import clipCore
 
     rows, paths = clipCore.load_rows()
     device = clipCore.get_device()
     model, preprocess, tokenizer = clipCore.load_model(device)
     feats = clipCore.get_image_features(model, preprocess, paths, device)
     _CTX.update(rows=rows, paths=paths, device=device,
-                model=model, tokenizer=tokenizer, feats=feats)
+                model=model, preprocess=preprocess, tokenizer=tokenizer, feats=feats)
     print(f"device: {device}  gallery: {len(rows)} images")
 
 
 def eval_auto(queries: list[dict], rank) -> list[dict]:
     out = []
     for q in queries:
-        ranked = rank(q["query"], DEPTH)
+        ranked = rank(q, DEPTH)
         rel = set(q["relevant"])
         hits10 = len(rel & set(ranked[:TOPK]))
         row = {
@@ -141,7 +182,7 @@ def eval_strict(queries: list[dict], rank, judged_map: dict) -> list[dict]:
         judged = judged_map.get(q["qid"])
         if not judged:
             continue
-        ranked = rank(q["query"], TOPK)
+        ranked = rank(q, TOPK)
         hits = sum(int(judged.get(iid, 0)) for iid in ranked[:TOPK])
         out.append(
             {
@@ -151,6 +192,7 @@ def eval_strict(queries: list[dict], rank, judged_map: dict) -> list[dict]:
                 "pool_judged": len(judged),
                 "hits": hits,
                 "p10": hits / TOPK,
+                "unjudged": sum(1 for iid in ranked[:TOPK] if iid not in judged),
             }
         )
     return out
@@ -168,21 +210,30 @@ def summarize(rows: list[dict], keys: tuple[str, ...]) -> dict:
     return {"n_queries": len(rows), "overall": overall, "by_group": by_group}
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--method", choices=sorted(METHODS), default="baseline")
-    ap.add_argument("--labels", choices=["auto", "strict"], default="auto")
-    ap.add_argument("--beta", type=float, default=None,
-                    help="rerank fusion weight (default: rerank.BETA); "
-                         "non-default values get a _b<value> output suffix")
-    ap.add_argument("--queries", type=Path, default=QUERIES_PATH,
-                    help="query file; non-default files add a tag to the "
-                         "default output name "
-                         "(default: evaluation/sets/queries.json)")
-    ap.add_argument("--out", type=Path, default=None)
-    args = ap.parse_args()
+def add_args(sub) -> None:
+    sub.add_argument("--method", choices=sorted(METHODS), default="baseline")
+    sub.add_argument("--labels", choices=["auto", "strict"], default="auto")
+    sub.add_argument("--beta", type=float, default=None,
+                     help="rerank fusion weight (default: rerank.BETA); "
+                          "non-default values get a _b<value> output suffix")
+    sub.add_argument("--parser", choices=["shipped", "legacy"], default="shipped",
+                     help="parser preset; 'legacy' regenerates the archived "
+                          "pre-alignment run without editing source")
+    sub.add_argument("--queries", type=Path, default=QUERIES_PATH,
+                     help="query file; non-default files add a tag to the "
+                          "default output name "
+                          "(default: evaluation/sets/queries.json)")
+    sub.add_argument("--out", type=Path, default=None)
+
+
+def main(args) -> None:
     if args.beta is not None:
         _CTX["beta"] = args.beta
+
+    from retrieval import queryParse
+
+    if args.parser != "shipped":
+        queryParse.apply_preset(args.parser)
 
     data = json.loads(args.queries.read_text(encoding="utf-8"))
     queries = data["queries"]
@@ -197,7 +248,8 @@ def main() -> None:
         queries = [q for q in queries if q["qid"] in judged_map]
         if args.method != "baseline":
             print(f"note: strict pool was judged on baseline top-10; "
-                  f"{args.method} ids outside it count 0 until judged")
+                  f"{args.method} ids outside it count 0 until they are judged "
+                  "(python main.py label-sheet)")
         if not queries:
             raise SystemExit(
                 "No judged queries overlap the query file; check qids against "
@@ -214,6 +266,11 @@ def main() -> None:
     print(f"\n== {args.method} / {args.labels} labels ==")
     print(f"queries: {summary['n_queries']}")
     print("  overall :", summary["overall"])
+    if args.labels == "strict":
+        open_cells = sum(r.get("unjudged", 0) for r in rows)
+        if open_cells:
+            print(f"  unjudged cells scored as 0: {open_cells} "
+                  f"(python main.py label-sheet)")
     for g, s in summary["by_group"].items():
         print(f"  {g:<6}: n={s['n']:<3} " +
               "  ".join(f"{k}={s[k]:.4f}" for k in keys))
@@ -221,28 +278,34 @@ def main() -> None:
     suffix = ""
     if args.queries.resolve() != QUERIES_PATH.resolve():
         suffix = "_" + args.queries.stem.removeprefix("queries_")
+    parser_tag = "" if args.parser == "shipped" else f"_{args.parser}"
     if args.out is not None:
         out = args.out
     elif args.beta is not None:
-        out = RESULTS_DIR / f"{args.method}_{args.labels}{suffix}_b{args.beta:g}.json"
+        out = RESULTS_DIR / (f"{args.method}{parser_tag}_{args.labels}"
+                             f"{suffix}_b{args.beta:g}.json")
     else:
-        out = RESULTS_DIR / f"{args.method}_{args.labels}{suffix}.json"
+        out = RESULTS_DIR / f"{args.method}{parser_tag}_{args.labels}{suffix}.json"
     try:
         queries_file = args.queries.resolve().relative_to(ROOT).as_posix()
     except ValueError:
         queries_file = str(args.queries)
-    extra = {"queries_file": queries_file}
-    if args.method == "rerank":
-        import queryParse
-        import rerank
+    extra: dict = {"queries_file": queries_file}
+    if args.method in ("rerank", "attr_only"):
+        from retrieval import rerank
 
         extra["rerank_depth"] = rerank.RERANK_DEPTH
-        extra["beta"] = args.beta if args.beta is not None else rerank.BETA
-        extra["parser"] = {
-            "mask_short_matches": queryParse.MASK_SHORT_MATCHES,
-            "color_family_weight": queryParse.COLOR_FAMILY_WEIGHT,
-            "type_family_weight": queryParse.TYPE_FAMILY_WEIGHT,
-        }
+        extra["parser"] = queryParse.current_config()
+        if args.method == "rerank":
+            extra["beta"] = args.beta if args.beta is not None else rerank.BETA
+    if args.labels == "strict":
+        extra["unjudged_cells_scored_zero"] = sum(r.get("unjudged", 0)
+                                                  for r in rows)
+    if args.method == "metadata":
+        extra["reads_labels"] = True
+        extra["note"] = ("upper bound on the auto oracle, not a candidate "
+                         "system: it matches the query's ground-truth "
+                         "attributes against the catalogue")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(
@@ -253,7 +316,3 @@ def main() -> None:
         encoding="utf-8",
     )
     print(f"\n-> {out}")
-
-
-if __name__ == "__main__":
-    main()

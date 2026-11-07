@@ -1,0 +1,91 @@
+{
+  "note": "Encoder-configuration check; see docs/projectReport.md 7.3. The shipped configuration is 'gelu', which is also what results/*.json and data/image_features.pt were produced with.",
+  "device": "mps",
+  "gallery": 1000,
+  "n_queries": 60,
+  "configs": {
+    "gelu": {
+      "force_quick_gelu": false,
+      "baseline": {
+        "ap50": 0.3481,
+        "p10": 0.5817,
+        "r10": 0.1896
+      },
+      "rerank": {
+        "ap50": 0.4078,
+        "p10": 0.6283,
+        "r10": 0.2024
+      },
+      "attr_only": {
+        "ap50": 0.4086,
+        "p10": 0.6133,
+        "r10": 0.1949
+      },
+      "prompt": {
+        "ap50": 0.3302,
+        "p10": 0.5633,
+        "r10": 0.1855
+      },
+      "top10_against_the_judged_pool": {
+        "baseline": {
+          "judged": 200,
+          "unjudged": 0
+        },
+        "rerank": {
+          "judged": 146,
+          "unjudged": 54
+        }
+      }
+    },
+    "quick_gelu": {
+      "force_quick_gelu": true,
+      "baseline": {
+        "ap50": 0.3676,
+        "p10": 0.5933,
+        "r10": 0.1929
+      },
+      "rerank": {
+        "ap50": 0.4256,
+        "p10": 0.6367,
+        "r10": 0.2056
+      },
+      "attr_only": {
+        "ap50": 0.4136,
+        "p10": 0.62,
+        "r10": 0.1967
+      },
+      "prompt": {
+        "ap50": 0.3504,
+        "p10": 0.575,
+        "r10": 0.1869
+      },
+      "top10_against_the_judged_pool": {
+        "baseline": {
+          "judged": 156,
+          "unjudged": 44
+        },
+        "rerank": {
+          "judged": 134,
+          "unjudged": 66
+        }
+      }
+    }
+  },
+  "delta_quick_gelu_minus_gelu": {
+    "ap50": 0.0195,
+    "p10": 0.0116,
+    "r10": 0.0033
+  },
+  "gain_under_each_config": {
+    "gelu": {
+      "ap50": 0.0597,
+      "p10": 0.0466,
+      "r10": 0.0128
+    },
+    "quick_gelu": {
+      "ap50": 0.058,
+      "p10": 0.0434,
+      "r10": 0.0127
+    }
+  }
+}

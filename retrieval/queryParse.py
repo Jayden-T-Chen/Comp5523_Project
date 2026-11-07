@@ -24,6 +24,34 @@ COLOR_FAMILY_WEIGHT = 0.5
 TYPE_FAMILY_WEIGHT = 1.0
 MASK_SHORT_MATCHES = True
 
+# Named configurations, so an archived result can be regenerated from the
+# command line instead of by editing the three constants above. "shipped" is
+# what the report quotes; "legacy" is the pre-alignment parser kept for the
+# ablation in docs/projectReport.md 6.3.
+PRESETS = {
+    "shipped": {"MASK_SHORT_MATCHES": True, "COLOR_FAMILY_WEIGHT": 0.5},
+    "legacy": {"MASK_SHORT_MATCHES": False, "COLOR_FAMILY_WEIGHT": 1.0},
+}
+
+
+def apply_preset(name: str) -> dict:
+    """Set the module constants to a named preset and return the live values."""
+    if name not in PRESETS:
+        raise ValueError(f"unknown parser preset {name!r}; choose from "
+                         + ", ".join(sorted(PRESETS)))
+    g = globals()
+    g.update(PRESETS[name])
+    return current_config()
+
+
+def current_config() -> dict:
+    """The three constants as they stand, recorded in every results file."""
+    return {
+        "mask_short_matches": MASK_SHORT_MATCHES,
+        "color_family_weight": COLOR_FAMILY_WEIGHT,
+        "type_family_weight": TYPE_FAMILY_WEIGHT,
+    }
+
 COLOR_ALIASES: dict[str, list[str]] = {
     "black": ["Black", "Charcoal"],
     "white": ["White", "Off White"],

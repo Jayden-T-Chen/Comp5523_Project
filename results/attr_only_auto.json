@@ -1,0 +1,581 @@
+{
+  "method": "attr_only",
+  "labels": "auto",
+  "depth": 50,
+  "topk": 10,
+  "queries_file": "evaluation/sets/queries.json",
+  "rerank_depth": 100,
+  "parser": {
+    "mask_short_matches": true,
+    "color_family_weight": 0.5,
+    "type_family_weight": 1.0
+  },
+  "n_queries": 60,
+  "overall": {
+    "ap50": 0.4086,
+    "p10": 0.6133,
+    "r10": 0.1949
+  },
+  "by_group": {
+    "color": {
+      "n": 20,
+      "ap50": 0.3285,
+      "p10": 0.65,
+      "r10": 0.1515
+    },
+    "combo": {
+      "n": 22,
+      "ap50": 0.3788,
+      "p10": 0.4818,
+      "r10": 0.2972
+    },
+    "type": {
+      "n": 18,
+      "ap50": 0.534,
+      "p10": 0.7333,
+      "r10": 0.1183
+    }
+  },
+  "per_query": [
+    {
+      "qid": "color_black",
+      "query": "black shoes",
+      "group": "color",
+      "n_relevant": 50,
+      "ap50": 0.40455296866685714,
+      "p10": 0.9,
+      "r10": 0.18
+    },
+    {
+      "qid": "color_blue",
+      "query": "blue shoes",
+      "group": "color",
+      "n_relevant": 50,
+      "ap50": 0.2532687608477408,
+      "p10": 0.6,
+      "r10": 0.12
+    },
+    {
+      "qid": "color_brown",
+      "query": "brown shoes",
+      "group": "color",
+      "n_relevant": 50,
+      "ap50": 0.08900609037918801,
+      "p10": 0.3,
+      "r10": 0.06
+    },
+    {
+      "qid": "color_grey",
+      "query": "grey shoes",
+      "group": "color",
+      "n_relevant": 50,
+      "ap50": 0.18165617044993712,
+      "p10": 0.6,
+      "r10": 0.12
+    },
+    {
+      "qid": "color_white",
+      "query": "white shoes",
+      "group": "color",
+      "n_relevant": 50,
+      "ap50": 0.36210217202868245,
+      "p10": 0.8,
+      "r10": 0.16
+    },
+    {
+      "qid": "color_beige",
+      "query": "beige shoes",
+      "group": "color",
+      "n_relevant": 49,
+      "ap50": 0.16676010949418252,
+      "p10": 0.6,
+      "r10": 0.12244897959183673
+    },
+    {
+      "qid": "color_green",
+      "query": "green shoes",
+      "group": "color",
+      "n_relevant": 49,
+      "ap50": 0.5504483615835948,
+      "p10": 1.0,
+      "r10": 0.20408163265306123
+    },
+    {
+      "qid": "color_red",
+      "query": "red shoes",
+      "group": "color",
+      "n_relevant": 49,
+      "ap50": 0.37385805405412215,
+      "p10": 0.8,
+      "r10": 0.16326530612244897
+    },
+    {
+      "qid": "color_silver",
+      "query": "silver shoes",
+      "group": "color",
+      "n_relevant": 49,
+      "ap50": 0.24400241748152307,
+      "p10": 0.6,
+      "r10": 0.12244897959183673
+    },
+    {
+      "qid": "color_yellow",
+      "query": "yellow shoes",
+      "group": "color",
+      "n_relevant": 49,
+      "ap50": 0.7640085526674004,
+      "p10": 1.0,
+      "r10": 0.20408163265306123
+    },
+    {
+      "qid": "color_navy_blue",
+      "query": "navy blue shoes",
+      "group": "color",
+      "n_relevant": 48,
+      "ap50": 0.36339045393133135,
+      "p10": 0.7,
+      "r10": 0.14583333333333334
+    },
+    {
+      "qid": "color_tan",
+      "query": "tan shoes",
+      "group": "color",
+      "n_relevant": 48,
+      "ap50": 0.2102418758815736,
+      "p10": 0.7,
+      "r10": 0.14583333333333334
+    },
+    {
+      "qid": "color_maroon",
+      "query": "maroon shoes",
+      "group": "color",
+      "n_relevant": 45,
+      "ap50": 0.44874358709966383,
+      "p10": 0.8,
+      "r10": 0.17777777777777778
+    },
+    {
+      "qid": "color_orange",
+      "query": "orange shoes",
+      "group": "color",
+      "n_relevant": 40,
+      "ap50": 0.45192367131212574,
+      "p10": 0.7,
+      "r10": 0.175
+    },
+    {
+      "qid": "color_purple",
+      "query": "purple shoes",
+      "group": "color",
+      "n_relevant": 37,
+      "ap50": 0.6465935304346063,
+      "p10": 0.9,
+      "r10": 0.24324324324324326
+    },
+    {
+      "qid": "color_olive",
+      "query": "olive shoes",
+      "group": "color",
+      "n_relevant": 36,
+      "ap50": 0.2961599902229297,
+      "p10": 0.6,
+      "r10": 0.16666666666666666
+    },
+    {
+      "qid": "color_multi",
+      "query": "multi colored shoes",
+      "group": "color",
+      "n_relevant": 31,
+      "ap50": 0.4436868789782518,
+      "p10": 0.6,
+      "r10": 0.1935483870967742
+    },
+    {
+      "qid": "color_khaki",
+      "query": "khaki shoes",
+      "group": "color",
+      "n_relevant": 28,
+      "ap50": 0.11206666425682747,
+      "p10": 0.2,
+      "r10": 0.07142857142857142
+    },
+    {
+      "qid": "color_charcoal",
+      "query": "charcoal shoes",
+      "group": "color",
+      "n_relevant": 24,
+      "ap50": 0.12070722192354362,
+      "p10": 0.4,
+      "r10": 0.16666666666666666
+    },
+    {
+      "qid": "color_bronze",
+      "query": "bronze shoes",
+      "group": "color",
+      "n_relevant": 23,
+      "ap50": 0.08737060041407867,
+      "p10": 0.2,
+      "r10": 0.08695652173913043
+    },
+    {
+      "qid": "type_casual_shoes",
+      "query": "casual shoes",
+      "group": "type",
+      "n_relevant": 283,
+      "ap50": 0.8850670299569875,
+      "p10": 0.9,
+      "r10": 0.03180212014134275
+    },
+    {
+      "qid": "type_heels",
+      "query": "heels",
+      "group": "type",
+      "n_relevant": 237,
+      "ap50": 0.6908427686380358,
+      "p10": 0.8,
+      "r10": 0.03375527426160337
+    },
+    {
+      "qid": "type_sports_shoes",
+      "query": "sports shoes",
+      "group": "type",
+      "n_relevant": 162,
+      "ap50": 0.8857924760349996,
+      "p10": 1.0,
+      "r10": 0.06172839506172839
+    },
+    {
+      "qid": "type_flip_flops",
+      "query": "flip flops",
+      "group": "type",
+      "n_relevant": 126,
+      "ap50": 0.7686133212240037,
+      "p10": 0.8,
+      "r10": 0.06349206349206349
+    },
+    {
+      "qid": "type_flats",
+      "query": "flats",
+      "group": "type",
+      "n_relevant": 101,
+      "ap50": 0.1750061653726412,
+      "p10": 0.4,
+      "r10": 0.039603960396039604
+    },
+    {
+      "qid": "type_sandals",
+      "query": "sandals",
+      "group": "type",
+      "n_relevant": 60,
+      "ap50": 0.19948968690924648,
+      "p10": 0.7,
+      "r10": 0.11666666666666667
+    },
+    {
+      "qid": "type_formal_shoes",
+      "query": "formal shoes",
+      "group": "type",
+      "n_relevant": 21,
+      "ap50": 0.7831466632573267,
+      "p10": 0.8,
+      "r10": 0.38095238095238093
+    },
+    {
+      "qid": "type_sports_sandals",
+      "query": "sports sandals",
+      "group": "type",
+      "n_relevant": 10,
+      "ap50": 0.049391335481561036,
+      "p10": 0.1,
+      "r10": 0.1
+    },
+    {
+      "qid": "type_heels_women",
+      "query": "heels for women",
+      "group": "type",
+      "n_relevant": 237,
+      "ap50": 0.6955863209217624,
+      "p10": 0.8,
+      "r10": 0.03375527426160337
+    },
+    {
+      "qid": "type_casual_shoes_men",
+      "query": "casual shoes for men",
+      "group": "type",
+      "n_relevant": 229,
+      "ap50": 0.907135145696421,
+      "p10": 1.0,
+      "r10": 0.043668122270742356
+    },
+    {
+      "qid": "type_sports_shoes_men",
+      "query": "sports shoes for men",
+      "group": "type",
+      "n_relevant": 114,
+      "ap50": 0.5456762550844247,
+      "p10": 0.7,
+      "r10": 0.06140350877192982
+    },
+    {
+      "qid": "type_flats_women",
+      "query": "flats for women",
+      "group": "type",
+      "n_relevant": 101,
+      "ap50": 0.1630882148182965,
+      "p10": 0.4,
+      "r10": 0.039603960396039604
+    },
+    {
+      "qid": "type_flip_flops_men",
+      "query": "flip flops for men",
+      "group": "type",
+      "n_relevant": 75,
+      "ap50": 0.5491919275829068,
+      "p10": 0.8,
+      "r10": 0.10666666666666667
+    },
+    {
+      "qid": "type_sandals_men",
+      "query": "sandals for men",
+      "group": "type",
+      "n_relevant": 60,
+      "ap50": 0.5215524308897735,
+      "p10": 0.9,
+      "r10": 0.15
+    },
+    {
+      "qid": "type_casual_shoes_women",
+      "query": "casual shoes for women",
+      "group": "type",
+      "n_relevant": 54,
+      "ap50": 0.18617876215855755,
+      "p10": 0.5,
+      "r10": 0.09259259259259259
+    },
+    {
+      "qid": "type_flip_flops_women",
+      "query": "flip flops for women",
+      "group": "type",
+      "n_relevant": 51,
+      "ap50": 0.30422982806167276,
+      "p10": 0.8,
+      "r10": 0.1568627450980392
+    },
+    {
+      "qid": "type_sports_shoes_women",
+      "query": "sports shoes for women",
+      "group": "type",
+      "n_relevant": 48,
+      "ap50": 0.5095546372370638,
+      "p10": 0.9,
+      "r10": 0.1875
+    },
+    {
+      "qid": "type_formal_shoes_men",
+      "query": "formal shoes for men",
+      "group": "type",
+      "n_relevant": 21,
+      "ap50": 0.7927316070173215,
+      "p10": 0.9,
+      "r10": 0.42857142857142855
+    },
+    {
+      "qid": "combo_white_sports_shoes",
+      "query": "white sports shoes",
+      "group": "combo",
+      "n_relevant": 28,
+      "ap50": 0.34830081589992073,
+      "p10": 0.6,
+      "r10": 0.21428571428571427
+    },
+    {
+      "qid": "combo_silver_sports_shoes",
+      "query": "silver sports shoes",
+      "group": "combo",
+      "n_relevant": 27,
+      "ap50": 0.35716213803829966,
+      "p10": 0.4,
+      "r10": 0.14814814814814814
+    },
+    {
+      "qid": "combo_khaki_casual_shoes",
+      "query": "khaki casual shoes",
+      "group": "combo",
+      "n_relevant": 20,
+      "ap50": 0.07745875724907983,
+      "p10": 0.0,
+      "r10": 0.0
+    },
+    {
+      "qid": "combo_olive_casual_shoes",
+      "query": "olive casual shoes",
+      "group": "combo",
+      "n_relevant": 20,
+      "ap50": 0.5413432017543859,
+      "p10": 0.7,
+      "r10": 0.35
+    },
+    {
+      "qid": "combo_beige_casual_shoes",
+      "query": "beige casual shoes",
+      "group": "combo",
+      "n_relevant": 19,
+      "ap50": 0.2845033514446643,
+      "p10": 0.3,
+      "r10": 0.15789473684210525
+    },
+    {
+      "qid": "combo_grey_sports_shoes",
+      "query": "grey sports shoes",
+      "group": "combo",
+      "n_relevant": 19,
+      "ap50": 0.20635587740850897,
+      "p10": 0.4,
+      "r10": 0.21052631578947367
+    },
+    {
+      "qid": "combo_bronze_heels",
+      "query": "bronze heels",
+      "group": "combo",
+      "n_relevant": 18,
+      "ap50": 0.24149586271290124,
+      "p10": 0.4,
+      "r10": 0.2222222222222222
+    },
+    {
+      "qid": "combo_green_casual_shoes",
+      "query": "green casual shoes",
+      "group": "combo",
+      "n_relevant": 17,
+      "ap50": 0.776529853352104,
+      "p10": 0.8,
+      "r10": 0.47058823529411764
+    },
+    {
+      "qid": "combo_red_casual_shoes",
+      "query": "red casual shoes",
+      "group": "combo",
+      "n_relevant": 17,
+      "ap50": 0.45432872935261215,
+      "p10": 0.4,
+      "r10": 0.23529411764705882
+    },
+    {
+      "qid": "combo_beige_heels",
+      "query": "beige heels",
+      "group": "combo",
+      "n_relevant": 16,
+      "ap50": 0.09131944444444443,
+      "p10": 0.3,
+      "r10": 0.1875
+    },
+    {
+      "qid": "combo_gold_heels",
+      "query": "gold heels",
+      "group": "combo",
+      "n_relevant": 16,
+      "ap50": 0.35702679995443154,
+      "p10": 0.6,
+      "r10": 0.375
+    },
+    {
+      "qid": "combo_maroon_casual_shoes",
+      "query": "maroon casual shoes",
+      "group": "combo",
+      "n_relevant": 16,
+      "ap50": 0.6269510462984728,
+      "p10": 0.7,
+      "r10": 0.4375
+    },
+    {
+      "qid": "combo_multi_heels",
+      "query": "multi colored heels",
+      "group": "combo",
+      "n_relevant": 16,
+      "ap50": 0.06438256935362106,
+      "p10": 0.2,
+      "r10": 0.125
+    },
+    {
+      "qid": "combo_navy_blue_casual_shoes",
+      "query": "navy blue casual shoes",
+      "group": "combo",
+      "n_relevant": 16,
+      "ap50": 0.6844002691149429,
+      "p10": 0.8,
+      "r10": 0.5
+    },
+    {
+      "qid": "combo_yellow_flip_flops",
+      "query": "yellow flip flops",
+      "group": "combo",
+      "n_relevant": 16,
+      "ap50": 0.7097383049349162,
+      "p10": 0.7,
+      "r10": 0.4375
+    },
+    {
+      "qid": "combo_tan_casual_shoes",
+      "query": "tan casual shoes",
+      "group": "combo",
+      "n_relevant": 15,
+      "ap50": 0.1683325672168093,
+      "p10": 0.2,
+      "r10": 0.13333333333333333
+    },
+    {
+      "qid": "combo_grey_casual_shoes",
+      "query": "grey casual shoes",
+      "group": "combo",
+      "n_relevant": 14,
+      "ap50": 0.5571016584928544,
+      "p10": 0.8,
+      "r10": 0.5714285714285714
+    },
+    {
+      "qid": "combo_white_casual_shoes",
+      "query": "white casual shoes",
+      "group": "combo",
+      "n_relevant": 14,
+      "ap50": 0.44707915273132665,
+      "p10": 0.6,
+      "r10": 0.42857142857142855
+    },
+    {
+      "qid": "combo_black_casual_shoes",
+      "query": "black casual shoes",
+      "group": "combo",
+      "n_relevant": 13,
+      "ap50": 0.28968911523259344,
+      "p10": 0.4,
+      "r10": 0.3076923076923077
+    },
+    {
+      "qid": "combo_purple_casual_shoes",
+      "query": "purple casual shoes",
+      "group": "combo",
+      "n_relevant": 13,
+      "ap50": 0.5573946886446886,
+      "p10": 0.6,
+      "r10": 0.46153846153846156
+    },
+    {
+      "qid": "combo_yellow_heels",
+      "query": "yellow heels",
+      "group": "combo",
+      "n_relevant": 13,
+      "ap50": 0.16013431013431015,
+      "p10": 0.3,
+      "r10": 0.23076923076923078
+    },
+    {
+      "qid": "combo_blue_casual_shoes",
+      "query": "blue casual shoes",
+      "group": "combo",
+      "n_relevant": 12,
+      "ap50": 0.3330896237445485,
+      "p10": 0.4,
+      "r10": 0.3333333333333333
+    }
+  ]
+}

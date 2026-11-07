@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import torch
 
-from clipCore import ROOT, embed_query
-from queryParse import parse_query
+from .clipCore import ROOT, embed_query
+from .queryParse import parse_query
 
 BETA = 0.1
 RERANK_DEPTH = 100           # cosine candidates re-scored after the coarse pass
@@ -89,8 +89,14 @@ def attribute_agreement(attrs: dict, tables: dict) -> torch.Tensor | None:
 
 
 def rerank_detail(model, tokenizer, feats, rows, query, depth, device,
-                  beta: float = BETA) -> list[dict]:
-    """Same ordering as rerank(), with both score components kept for display."""
+                  beta: float = BETA, mode: str = "fuse") -> list[dict]:
+    """Same ordering as rerank(), with both score components kept for display.
+
+    mode="fuse" is the shipped score, cosine plus beta times the agreement.
+    mode="attr" drops the cosine term and orders the same candidate pool by
+    agreement alone, with cosine only breaking ties; the evaluation uses it to
+    say how much of the gain the visual term actually carries.
+    """
     q = embed_query(model, tokenizer, query, device)
     sims = (feats @ q.T).squeeze(1)
     k = min(depth, len(rows))
@@ -102,9 +108,9 @@ def rerank_detail(model, tokenizer, feats, rows, query, depth, device,
     if bonus is None:
         mixed, agree, order = sims[idxs], None, torch.arange(len(idxs))
     else:
-        mixed = sims[idxs] + beta * bonus[idxs]
         agree = bonus[idxs]
-        order = mixed.argsort(descending=True)
+        mixed = agree if mode == "attr" else sims[idxs] + beta * agree
+        order = mixed.argsort(descending=True, stable=True)
 
     out = []
     for pos, j in enumerate(order.tolist()):
@@ -126,8 +132,8 @@ def rerank_detail(model, tokenizer, feats, rows, query, depth, device,
 
 
 def rerank(model, tokenizer, feats, rows, query, depth, device,
-           beta: float = BETA) -> list[str]:
+           beta: float = BETA, mode: str = "fuse") -> list[str]:
     """Ordered ids from rerank_detail()."""
     detail = rerank_detail(model, tokenizer, feats, rows, query, depth,
-                           device, beta)
+                           device, beta, mode)
     return [d["id"] for d in detail]

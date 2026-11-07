@@ -1,17 +1,11 @@
-#!/usr/bin/env python3
-"""CLI: rank gallery images for text queries with CLIP.
+"""Command-line ranking over the footwear gallery.
 
-Usage:
-  python retrieval/searchCli.py
-  python retrieval/searchCli.py --query "black leather shoes" --top 8
-  python retrieval/searchCli.py --method rerank --query "silver sports shoes"
+Reached through `python main.py search`; see main.py for the flags.
 """
 from __future__ import annotations
 
-import argparse
-
-import rerank
-from clipCore import (
+from . import rerank
+from .clipCore import (
     get_device,
     get_image_features,
     load_model,
@@ -19,22 +13,25 @@ from clipCore import (
     search,
 )
 
+SAMPLE_QUERIES = [
+    "black leather shoes",
+    "white sneakers",
+    "red sandals",
+    "blue flip flops",
+    "brown heels",
+]
 
-def main() -> None:
-    ap = argparse.ArgumentParser(description="CLIP text->image ranking")
-    ap.add_argument("--query", action="append", dest="queries")
-    ap.add_argument("--top", type=int, default=8)
-    ap.add_argument("--method", choices=["baseline", "rerank"],
-                    default="baseline")
-    args = ap.parse_args()
 
-    queries = args.queries or [
-        "black leather shoes",
-        "white sneakers",
-        "red sandals",
-        "blue flip flops",
-        "brown heels",
-    ]
+def add_args(sub) -> None:
+    sub.add_argument("--query", action="append", dest="queries",
+                     help="repeatable; five built-in samples when omitted")
+    sub.add_argument("--top", type=int, default=8)
+    sub.add_argument("--method", choices=["baseline", "rerank"],
+                     default="baseline")
+
+
+def main(args) -> None:
+    queries = args.queries or SAMPLE_QUERIES
 
     rows, paths = load_rows()
     device = get_device()
@@ -62,7 +59,3 @@ def main() -> None:
                 f"  {r['rank']}. {r['score']:.3f}  "
                 f"[{r['type']:<14}] {r['color']:<10} {r['title']}"
             )
-
-
-if __name__ == "__main__":
-    main()
