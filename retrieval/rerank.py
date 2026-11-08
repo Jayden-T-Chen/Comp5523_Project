@@ -126,6 +126,7 @@ def rerank_detail(model, tokenizer, feats, rows, query, depth, device,
                 "title": row.get("display_name", ""),
                 "type": row.get("articleType", ""),
                 "color": row.get("color", ""),
+                "gender": row.get("gender", ""),
             }
         )
     return out

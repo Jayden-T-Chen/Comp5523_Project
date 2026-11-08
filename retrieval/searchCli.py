@@ -14,11 +14,11 @@ from .clipCore import (
 )
 
 SAMPLE_QUERIES = [
-    "black leather shoes",
-    "white sneakers",
-    "red sandals",
-    "blue flip flops",
-    "brown heels",
+    "green sneakers",
+    "grey sports shoes",
+    "brown leather loafers",
+    "maroon shoes",
+    "flip flops for men",
 ]
 
 

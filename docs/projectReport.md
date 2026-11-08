@@ -25,8 +25,8 @@ Demonstration: 18 November 2026, TU101 · Report deadline: 25 November 2026
 | Domain adaptation | §4.2–§4.3 | Query parsing and zero-shot attribute re-ranking |
 | Re-ranking | §4.3 | `cos + β·Π(weighted P)` over the top-100 |
 | Query understanding | §4.2 | Three slots, alias tables, longest-phrase masking, family weights |
-| User interface | §4.4 | Gradio page with a baseline / re-rank switch |
-| Custom test set, human annotation, metrics, protocol, failure analysis | §5–§6 | 60 queries, 200 labelled cells (54 still open), mAP@50 / P@10 / R@10, paired bootstrap, five cases |
+| User interface | §4.4 | Gradio page: one list, cards mark the values scored |
+| Custom test set, human annotation, metrics, protocol, failure analysis | §5–§6 | 60 queries, 254 labelled cells, mAP@50 / P@10 / R@10, paired bootstrap, five cases |
 | Efficiency evaluation (optional) | §4.4, §7.2 | Measured: 37 ms per query for both arms, tables 1.8 s once, gallery 41 s once (`results/attribute_probe.json`) |
 | 7-minute demonstration and 8-page report | §10–§11 | Timing plan, page budget, APA, disclosure, contributions |
 
@@ -189,9 +189,9 @@ query-time latency. The cost is offline: 1.8 s to build the tables, 41.0 s to en
 a cold start that answers the first query 31.2 s after the process begins
 (`results/attribute_probe.json`).
 
-`main.py search` prints a ranking with both scores and `main.py web` opens a Gradio page with a query
-box, a Top-K slider and a switch between the arms; both call the functions the evaluation uses, so the
-demonstration and the numbers share one code path.
+`main.py search` prints a ranking with both scores and `main.py web` opens a Gradio page that
+lists one query's ranking and marks, on every card, which catalogue values the score read; both
+call the functions the evaluation uses, so the demonstration and the numbers share one code path.
 
 ---
 
@@ -549,8 +549,16 @@ someone asks what still fails.
   the page is up in a few seconds and no model download happens.
 - Pre-type the §10.4 queries in the order you plan to use them; keep `bronze heels` as the
   spare.
-- Check that the method switch re-runs the query, and show both lists for the same query.
-- Record a backup video of one query on both arms, 60–90 s long, in case the network or the projector
+- The five chips under the query box are `green sneakers`, `grey sports shoes`, `brown leather
+  loafers`, `maroon shoes`, `flip flops for men`. Each was measured on the catalogue: all eight
+  images in its re-ranked head carry a colour and a type the agreement term accepts, the eight
+  titles are eight different shoes, and the thumbnails were compared with the words one by one,
+  because the catalogue's colour field is sometimes wrong. The limitation queries in the table
+  are typed by hand.
+- Tick both checkboxes on one query, so the audience sees the cosine and agreement numbers behind
+  a card and the rank cosine alone gave it.
+- Record a backup video of one query on the page and the same query through `python main.py search
+  --method baseline` and `--method rerank`, 60–90 s long, in case the network or the projector
   fails. The brief sets no length, so keep it small enough to send as a file.
 - Share the application window in Zoom, not the desktop; font size at least 18 pt.
 
@@ -568,11 +576,11 @@ before or after paragraphs) and printed to PDF by headless Chrome
 (`Google Chrome --headless=new --no-pdf-header-footer --print-to-pdf=page.pdf page.html`), which counts
 the pages and the words on each. The `---` rules between sections are markdown scaffolding and stay out
 of the typeset version; the contribution table is measured with three member rows. The eighth page ends
-0.54 in above the bottom margin.
+0.36 in above the bottom margin.
 
-That range now holds 3,244 words of prose — paragraph text between the abstract and §9 with the markdown
+That range now holds 3,247 words of prose — paragraph text between the abstract and §9 with the markdown
 markup stripped and headings, table cells and the displayed formula left out — plus 25 headings, eight
-tables and 35 data rows, one displayed formula and one figure. Pages carry 433 to 576 words depending on
+tables and 35 data rows, one displayed formula and one figure. Pages carry 434 to 569 words depending on
 where a table can break, so the 600 words per page assumed by the first version of this section was too
 generous: it had measured 10.2 pages for 4,279 words of prose, 38 headings and nine tables. Four levers
 closed the gap, cheapest first, and all four are now in the file:
@@ -585,9 +593,9 @@ closed the gap, cheapest first, and all four are now in the file:
 - 38 headings reduced to 25: §1 from three to two, §3 from four to two, §4 from six to four, §5 from
   five to two, §6 from eight to four and §7 from three to two, the removed sections folded into their
   neighbours with every cross-reference rewritten.
-- Prose in the range cut from 4,279 words to 3,244, a paragraph at a time with every metric, table row
+- Prose in the range cut from 4,279 words to 3,247, a paragraph at a time with every metric, table row
   and claim left in place and re-checked against `results/` after each pass. The completed human
-  comparison then refilled §6.3 with 119 of them, and the 0.54 in of slack still holds.
+  comparison then refilled §6.3 with 119 of them, and the 0.36 in of slack still holds.
 
 Further table merging was tried and dropped: the eight tables share no columns, so joining them adds a
 header row and a page break without saving a line. Figure 1 is the remaining claim on the page budget,
@@ -595,11 +603,12 @@ and it does not fit — a 150 pt diagram with caption takes the document to 9 pa
 instead, where it can be drawn large.
 
 The reference list sits outside the range measured above. Typeset with it, the same document runs to 9
-pages, 135 words of them on the ninth when the references follow the two statements and 91 when they
-precede them. An inch of this setting carries about 53 words, so the 0.54 in left on page eight absorbs
-roughly 30 of them, and bringing the list inside the limit needs some 60 further words of prose removed.
-Whether that cut follows depends on the brief's rule about whether the 8 pages include the references
-(§11.7).
+pages, 136 words of them on the ninth when the references follow the two statements and 91 when they
+precede them. An inch of this setting carries about 51 words, the 497-word average page over the 9.7 in
+of text a page holds, so the 0.36 in left on page eight absorbs roughly 18 of them. On the tighter of
+the two orderings that leaves some 70 words of prose still to remove before the list fits inside the
+limit. Whether that cut follows depends on the brief's rule about whether the 8 pages include the
+references (§11.7).
 
 ### 11.2 Figures and tables
 
